@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Wonderland | For Jenni</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Noto+Serif+SC:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- GSAP and Plugins -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    
+    <!-- Three.js -->
+    <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.158.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.158.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+        window.THREE = THREE;
+        
+        // 等待 DOM 加载完成
+        document.addEventListener('DOMContentLoaded', () => {
+            // 初始化所有效果
+            initThreeJS();
+            createStars();
+            createSnowflakes();
+            createCinematicSnow();
+            createSnowflakeLoader();
+            createMagicalLights();
+            createMagicalElements();
+
+            // Text animations with stagger
+            const textTimeline = gsap.timeline({delay: 1});
+            
+            textTimeline
+                .to('.main-title', {
+                    opacity: 1,
+                    duration: 3,
+                    ease: 'power2.out'
+                })
+                .to('.dedication', {
+                    opacity: 0.7,
+                    y: 0,
+                    duration: 2,
+                    ease: 'power2.out',
+                    from: { y: 20, opacity: 0 }
+                }, '-=1.5')
+                .to('.loader-container', {
+                    opacity: 1,
+                    duration: 2,
+                    ease: 'power2.out'
+                }, '-=1');
+        });
+    </script>
+
+    <style>
+        .font-cormorant {
+            font-family: 'Cormorant Garamond', serif;
+        }
+        
+        .text-shadow-elegant {
+            text-shadow: 0 4px 12px rgba(0, 0, 0, 0.3),
+                         0 8px 24px rgba(0, 0, 0, 0.2);
+        }
+        
+        .bg-winter-night {
+            background: linear-gradient(
+                180deg,
+                #050810 0%,
+                #0A1018 35%,
+                #121824 100%
+            );
+            min-height: 100vh;
+            width: 100vw;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: -10;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.7;
+            z-index: -9;
+        }
+
+        .fixed.inset-0 {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -8;
+        }
+
+        .vignette {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(
+                circle at center,
+                transparent 30%,
+                rgba(0, 0, 0, 0.3) 70%,
+                rgba(0, 0, 0, 0.7) 100%
+            );
+            pointer-events: none;
+            mix-blend-mode: multiply;
+            z-index: -7;
+        }
+
+        @keyframes gentleBreathe {
+            0% { 
+                opacity: 0; 
+                transform: scale(0.98) translateY(0); 
+                filter: blur(0px);
+                text-shadow: 0 4px 12px rgba(255, 255, 255, 0.1),
+                            0 8px 24px rgba(255, 255, 255, 0.05);
+            }
+            30% {
+                opacity: 0.8;
+            }
+            50% { 
+                opacity: 1; 
+                transform: scale(1.02) translateY(-15px); 
+                filter: blur(0.3px);
+                text-shadow: 0 4px 12px rgba(255, 255, 255, 0.3),
+                            0 8px 24px rgba(255, 255, 255, 0.2),
+                            0 12px 36px rgba(255, 255, 255, 0.1);
+            }
+            100% { 
+                opacity: 0.8; 
+                transform: scale(0.98) translateY(0); 
+                filter: blur(0px);
+                text-shadow: 0 4px 12px rgba(255, 255, 255, 0.1),
+                            0 8px 24px rgba(255, 255, 255, 0.05);
+            }
+        }
+
+        @keyframes snowfall {
+            0% {
+                transform: translateY(-20vh) translateX(0) rotate(0deg) scale(0.8);
+                opacity: 0;
+                filter: blur(1px);
+            }
+            50% {
+                opacity: 0.4;
+                transform: translateY(50vh) translateX(10vw) rotate(180deg) scale(0.9);
+                filter: blur(2px);
+            }
+            100% {
+                transform: translateY(120vh) translateX(20vw) rotate(360deg) scale(1);
+                opacity: 0;
+                filter: blur(1px);
+            }
+        }
+
+        @keyframes closeupSnowfall {
+            0% {
+                transform: translate3d(var(--startX), var(--startY), 0) scale(0.1);
+                opacity: 0;
+                filter: blur(8px);
+            }
+            10% {
+                opacity: 0.3;
+                filter: blur(6px);
+            }
+            80% {
+                opacity: 0.8;
+                filter: blur(2px);
+                transform: translate3d(var(--endX), var(--endY), var(--endZ)) scale(1);
+            }
+            100% {
+                opacity: 0.9;
+                transform: translate3d(var(--endX), var(--endY), var(--endZ)) scale(1);
+                filter: blur(var(--finalBlur));
+            }
+        }
+
+        @keyframes softGlow {
+            0%, 100% {
+                opacity: 0.4;
+                filter: blur(3px);
+            }
+            50% {
+                opacity: 0.8;
+                filter: blur(2px);
+            }
+        }
+
+        @keyframes loaderBreath {
+            0%, 100% { 
+                transform: scale(0.95) rotate(0deg);
+                opacity: 0.3;
+            }
+            50% { 
+                transform: scale(1.05) rotate(180deg);
+                opacity: 0.6;
+            }
+        }
+
+        @keyframes loaderDot {
+            0%, 100% {
+                transform: scale(0.7);
+                opacity: 0.3;
+            }
+            50% {
+                transform: scale(1);
+                opacity: 0.8;
+            }
+        }
+
+        @keyframes gentleFloat {
+            0% {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -200% center;
+            }
+            100% {
+                background-position: 200% center;
+            }
+        }
+
+        @keyframes loaderSpin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes titleBreathe {
+            0% { 
+                opacity: 0.85; 
+                transform: scale(0.98) translateY(0); 
+                filter: blur(0px);
+                text-shadow: 0 4px 12px rgba(255, 255, 255, 0.1),
+                            0 8px 24px rgba(255, 255, 255, 0.05);
+            }
+            50% { 
+                opacity: 1; 
+                transform: scale(1.01) translateY(-8px); 
+                filter: blur(0.2px);
+                text-shadow: 0 4px 12px rgba(255, 255, 255, 0.2),
+                            0 8px 24px rgba(255, 255, 255, 0.15),
+                            0 12px 36px rgba(255, 255, 255, 0.1);
+            }
+            100% { 
+                opacity: 0.85; 
+                transform: scale(0.98) translateY(0); 
+                filter: blur(0px);
+                text-shadow: 0 4px 12px rgba(255, 255, 255, 0.1),
+                            0 8px 24px rgba(255, 255, 255, 0.05);
+            }
+        }
+
+        .snowflake {
+            position: fixed;
+            background: white;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: snowfall linear infinite;
+            filter: blur(1.5px);
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+        }
+
+        .closeup-snowflake {
+            position: fixed;
+            pointer-events: none;
+            z-index: 100;
+            background: radial-gradient(circle at center, 
+                rgba(255, 255, 255, 0.8) 0%,
+                rgba(255, 255, 255, 0.4) 40%,
+                rgba(255, 255, 255, 0) 70%
+            );
+            border-radius: 50%;
+            animation: closeupSnowfall 4s cubic-bezier(0.4, 0, 0.2, 1) forwards,
+                       softGlow 4s ease-in-out infinite;
+        }
+
+        .gentle-breathe {
+            animation: gentleBreathe 12s ease-in-out infinite;
+        }
+
+        .main-title {
+            font-size: var(--title-size);
+            font-weight: 500;
+            letter-spacing: 0.12em;
+            line-height: 1.4;
+            color: rgba(255, 255, 255, 0.95);
+            opacity: 0;
+            max-width: none;
+            margin: 0 auto;
+            white-space: nowrap;
+        }
+
+        .dedication {
+            font-size: clamp(1.2rem, 2.2vw, 1.4rem);
+            font-weight: 400;
+            letter-spacing: 0.2em;
+            color: rgba(255, 255, 255, 0.85);
+            margin-top: 2rem;
+            opacity: 0;
+            line-height: 1.8;
+        }
+
+        .dedication span {
+            font-size: clamp(1rem, 1.8vw, 1.2rem);
+            color: rgba(255, 255, 255, 0.7);
+            letter-spacing: 0.3em;
+        }
+
+        .subtitle, .cosmic-text {
+            display: none;
+        }
+
+        .text-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -60%);
+            width: 100%;
+            padding: 0 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .loader-container {
+            position: relative;
+            margin-top: 3rem;
+            height: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+        }
+
+        .loading-text {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.5);
+            letter-spacing: 0.2em;
+            margin-top: 1rem;
+            opacity: 0;
+            animation: gentleBreathe 2s ease-in-out infinite;
+        }
+
+        .loader {
+            position: relative;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .loader-circle {
+            display: none;
+        }
+
+        .shimmer-effect {
+            background: linear-gradient(
+                90deg,
+                transparent 0%,
+                rgba(255, 255, 255, 0.1) 50%,
+                transparent 100%
+            );
+            background-size: 200% 100%;
+            animation: shimmer 3s ease-in-out infinite;
+        }
+
+        .snowflake-loader {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            filter: blur(1px);
+        }
+
+        .cinematic-snow {
+            position: fixed;
+            width: var(--size);
+            height: var(--size);
+            pointer-events: none;
+            z-index: 100;
+            transform-style: preserve-3d;
+            will-change: transform;
+        }
+
+        .cinematic-snow::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 30% 30%,
+                rgba(255, 255, 255, 0.9) 0%,
+                rgba(255, 255, 255, 0.7) 30%,
+                rgba(255, 255, 255, 0.3) 60%,
+                transparent 100%
+            );
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+            opacity: var(--opacity);
+            transform: translateZ(0);
+        }
+
+        .title-breathe {
+            animation: titleBreathe 6s ease-in-out infinite;
+        }
+
+        @keyframes lumos {
+            0%, 100% {
+                opacity: 0;
+                transform: scale(0.8) translateY(0);
+                filter: blur(4px);
+            }
+            50% {
+                opacity: 0.6;
+                transform: scale(1.1) translateY(-5px);
+                filter: blur(2px);
+            }
+        }
+
+        @keyframes snitchFloat {
+            0%, 100% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+            25% {
+                transform: translate(8px, -8px) rotate(15deg);
+            }
+            75% {
+                transform: translate(-8px, 8px) rotate(-15deg);
+            }
+        }
+
+        .magical-light {
+            position: fixed;
+            width: 4px;
+            height: 4px;
+            background: radial-gradient(circle at center,
+                rgba(255, 255, 255, 0.9) 0%,
+                rgba(255, 255, 255, 0.4) 50%,
+                transparent 100%
+            );
+            border-radius: 50%;
+            filter: blur(1px);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.6),
+                       0 0 30px rgba(255, 255, 255, 0.3);
+            animation: lumos 4s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        .golden-snitch {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: radial-gradient(circle at center,
+                rgba(255, 215, 0, 0.9) 0%,
+                rgba(255, 215, 0, 0.4) 60%,
+                transparent 100%
+            );
+            border-radius: 50%;
+            filter: blur(0.5px);
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+            animation: snitchFloat 6s ease-in-out infinite;
+            opacity: 0.6;
+        }
+
+        .golden-snitch::before,
+        .golden-snitch::after {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 2px;
+            background: linear-gradient(90deg,
+                transparent 0%,
+                rgba(255, 215, 0, 0.4) 50%,
+                transparent 100%
+            );
+            top: 50%;
+            transform-origin: 100% 50%;
+        }
+
+        .golden-snitch::before {
+            right: 100%;
+            transform: rotate(-30deg);
+        }
+
+        .golden-snitch::after {
+            right: 100%;
+            transform: rotate(30deg);
+        }
+
+        .loader::before {
+            content: '';
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            animation: snitchFloat 4s ease-in-out infinite;
+        }
+
+        @keyframes wandLight {
+            0%, 100% {
+                opacity: 0.3;
+                transform: scale(0.8) translateY(0);
+                filter: blur(8px);
+            }
+            50% {
+                opacity: 0.8;
+                transform: scale(1.2) translateY(-10px);
+                filter: blur(4px);
+            }
+        }
+
+        @keyframes spellText {
+            0% {
+                opacity: 0;
+                transform: translate(var(--moveX), var(--moveY)) scale(0.8);
+                filter: blur(4px);
+            }
+            15% {
+                opacity: 0.7;
+                transform: translate(calc(var(--moveX) + 10px), calc(var(--moveY) - 10px)) scale(1);
+                filter: blur(0.5px);
+            }
+            85% {
+                opacity: 0.7;
+                transform: translate(calc(var(--moveX) + 10px), calc(var(--moveY) - 10px)) scale(1);
+                filter: blur(0.5px);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(calc(var(--moveX) + 20px), calc(var(--moveY) - 20px)) scale(0.8);
+                filter: blur(4px);
+            }
+        }
+
+        @font-face {
+            font-family: 'HarryP';
+            src: url('https://db.onlinewebfonts.com/t/0421d4186d6efbfc5331fe180895e780.woff2') format('woff2'),
+                 url('https://db.onlinewebfonts.com/t/0421d4186d6efbfc5331fe180895e780.woff') format('woff');
+        }
+
+        .wand-light {
+            position: fixed;
+            width: 8px;
+            height: 8px;
+            background: radial-gradient(circle at center,
+                rgba(255, 255, 255, 0.95) 0%,
+                rgba(255, 255, 255, 0.6) 30%,
+                rgba(255, 255, 255, 0.2) 60%,
+                transparent 100%
+            );
+            border-radius: 50%;
+            filter: blur(2px);
+            box-shadow: 
+                0 0 20px rgba(255, 255, 255, 0.8),
+                0 0 40px rgba(255, 255, 255, 0.4),
+                0 0 60px rgba(255, 255, 255, 0.2);
+            animation: wandLight 4s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .spell-text {
+            position: fixed;
+            font-family: 'HarryP', 'Cormorant Garamond', serif;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 1.5rem;
+            letter-spacing: 0.1em;
+            text-shadow: 
+                0 0 15px rgba(255, 255, 255, 0.3),
+                0 0 30px rgba(255, 255, 255, 0.2);
+            animation: spellText 8s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 9;
+            --moveX: 0px;
+            --moveY: 0px;
+        }
+
+        .golden-snitch {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: radial-gradient(circle at center,
+                rgba(255, 215, 0, 0.95) 0%,
+                rgba(255, 215, 0, 0.6) 40%,
+                rgba(255, 215, 0, 0.2) 70%,
+                transparent 100%
+            );
+            border-radius: 50%;
+            filter: blur(0.5px);
+            box-shadow: 
+                0 0 15px rgba(255, 215, 0, 0.6),
+                0 0 30px rgba(255, 215, 0, 0.3);
+            animation: snitchFloat 8s ease-in-out infinite;
+            opacity: 0.8;
+            z-index: 20;
+        }
+
+        .golden-snitch::before,
+        .golden-snitch::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 3px;
+            background: linear-gradient(90deg,
+                transparent 0%,
+                rgba(255, 215, 0, 0.8) 50%,
+                transparent 100%
+            );
+            top: 50%;
+            transform-origin: 100% 50%;
+            animation: wingFlutter 0.2s ease-in-out infinite alternate;
+        }
+
+        @keyframes wingFlutter {
+            0% {
+                transform: rotate(-30deg) scaleX(0.8);
+            }
+            100% {
+                transform: rotate(-20deg) scaleX(1);
+            }
+        }
+
+        /* 响应式基础设置 */
+        :root {
+            --content-padding: clamp(1rem, 5vw, 3rem);
+            --title-size-mobile: clamp(1.5rem, 4vw, 2rem);
+            --title-size-tablet: clamp(2rem, 4vw, 3rem);
+            --title-size-desktop: clamp(3rem, 4vw, 4.5rem);
+            --subtitle-size: clamp(1rem, 2.5vw, 1.4rem);
+            --dedication-size: clamp(0.9rem, 2vw, 1.2rem);
+            --spell-size: clamp(1rem, 3vw, 1.5rem);
+        }
+
+        /* 移动端优化 */
+        @media (max-width: 768px) {
+            .text-container {
+                transform: translate(-50%, -45%);
+                padding: 1.5rem;
+                width: 94%;
+                height: 100vh;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                gap: 2rem;
+            }
+
+            .main-title {
+                font-size: 2rem;
+                letter-spacing: 0.08em;
+                white-space: normal;
+                word-wrap: break-word;
+                line-height: 1.4;
+                margin-bottom: 0;
+            }
+
+            .title-breathe {
+                animation: titleBreatheMobile 6s ease-in-out infinite;
+            }
+
+            .dedication-container {
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+                margin-top: 1rem;
+            }
+
+            .dedication {
+                margin: 0;
+                font-size: 1.1rem;
+                letter-spacing: 0.12em;
+                line-height: 1.6;
+            }
+
+            .dedication span {
+                font-size: 1rem;
+                letter-spacing: 0.15em;
+                margin-top: 0.5rem;
+                opacity: 0.85;
+            }
+
+            .loader-container {
+                margin-top: 2rem;
+                transform: scale(0.8);
+            }
+
+            .spell-text {
+                font-size: 1.2rem;
+            }
+
+            .magical-light {
+                width: 3px;
+                height: 3px;
+            }
+
+            .snowflake {
+                opacity: 0.4;
+            }
+        }
+
+        @keyframes titleBreatheMobile {
+            0% { 
+                opacity: 0.85; 
+                transform: scale(0.98); 
+                filter: blur(0px);
+            }
+            50% { 
+                opacity: 1; 
+                transform: scale(1.02); 
+                filter: blur(0.2px);
+            }
+            100% { 
+                opacity: 0.85; 
+                transform: scale(0.98); 
+                filter: blur(0px);
+            }
+        }
+
+        /* 平板端优化 */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .text-container {
+                transform: translate(-50%, -50%);
+                padding: 2rem;
+                width: 90%;
+            }
+
+            .main-title {
+                font-size: 2.8rem;
+                letter-spacing: 0.1em;
+                line-height: 1.3;
+                margin-bottom: 1.5rem;
+            }
+
+            .dedication {
+                margin-top: 2rem;
+                font-size: 1.2rem;
+                letter-spacing: 0.15em;
+            }
+
+            .dedication span {
+                font-size: 1.1rem;
+                margin-top: 1rem;
+            }
+        }
+
+        /* 桌面端优化 */
+        @media (min-width: 1025px) {
+            .text-container {
+                transform: translate(-50%, -60%);
+                padding: var(--content-padding);
+                width: 95%;
+                max-width: 1400px;
+            }
+
+            .main-title {
+                font-size: var(--title-size-desktop);
+                letter-spacing: 0.15em;
+                white-space: nowrap;
+            }
+        }
+
+        .text-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .main-title {
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.95);
+            opacity: 0;
+            text-align: center;
+            margin: 0 auto;
+        }
+
+        .dedication {
+            font-weight: 400;
+            letter-spacing: 0.2em;
+            color: rgba(255, 255, 255, 0.85);
+            opacity: 0;
+            line-height: 1.8;
+            text-align: center;
+            width: 100%;
+        }
+
+        .dedication span {
+            color: rgba(255, 255, 255, 0.7);
+            letter-spacing: 0.3em;
+            display: block;
+            text-align: center;
+        }
+
+        /* 优化视觉层次 */
+        .vignette {
+            background: radial-gradient(
+                circle at center,
+                transparent 35%,
+                rgba(0, 0, 0, 0.2) 60%,
+                rgba(0, 0, 0, 0.6) 100%
+            );
+            mix-blend-mode: multiply;
+        }
+
+        /* 优化粒子效果 */
+        .snowflake {
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .snowflake.visible {
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body class="min-h-screen overflow-hidden">
+    <!-- Background -->
+    <div class="bg-winter-night"></div>
+
+    <!-- Three.js Container -->
+    <div id="canvas-container"></div>
+
+    <!-- Stars Background -->
+    <div class="fixed inset-0">
+        <div id="stars" class="absolute inset-0"></div>
+    </div>
+
+    <!-- Vignette Effect -->
+    <div class="vignette"></div>
+
+    <!-- Main Content -->
+    <div class="text-container">
+        <div class="text-center">
+            <div class="title-breathe">
+                <h1 class="main-title font-cormorant text-shadow-elegant uppercase">
+                    Welcome to the Wonderland
+                </h1>
+            </div>
+            <div class="dedication-container">
+                <p class="dedication font-cormorant text-shadow-elegant">
+                    In this Gentle Christmas Eve
+                    <span class="block mt-4 italic">----A Cosmos For Jenni</span>
+                </p>
+            </div>
+        </div>
+        <div class="loader-container">
+            <div class="loader">
+                <div class="golden-snitch"></div>
+            </div>
+            <p class="loading-text">Lumos Maxima...</p>
+        </div>
+    </div>
+
+    <script>
+        // Register GSAP plugins
+        gsap.registerPlugin(CSSPlugin);
+
+        // Three.js setup
+        function initThreeJS() {
+            if (!window.THREE) {
+                console.warn('THREE.js not loaded yet');
+                return;
+            }
+
+            const container = document.getElementById('canvas-container');
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ alpha: true });
+            
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+            
+            // Add particles
+            const particlesGeometry = new THREE.BufferGeometry();
+            const particlesCount = 3000;
+            const posArray = new Float32Array(particlesCount * 3);
+            
+            for(let i = 0; i < particlesCount * 3; i++) {
+                posArray[i] = (Math.random() - 0.5) * 5;
+            }
+            
+            particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            
+            const particlesMaterial = new THREE.PointsMaterial({
+                size: 0.003,
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.5
+            });
+            
+            const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+            scene.add(particlesMesh);
+            
+            camera.position.z = 3;
+            
+            // Animation
+            function animate() {
+                requestAnimationFrame(animate);
+                particlesMesh.rotation.y += 0.00005;
+                particlesMesh.rotation.x += 0.00002;
+                renderer.render(scene, camera);
+            }
+            
+            animate();
+            
+            // Handle resize
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+
+        // Create stars with different sizes
+        function createStars() {
+            const starsContainer = document.getElementById('stars');
+            for (let i = 0; i < 200; i++) {
+                const star = document.createElement('div');
+                const size = Math.random() * 3;
+                star.className = 'absolute rounded-full';
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                star.style.backgroundColor = `rgba(255, 255, 255, ${Math.random() * 0.5 + 0.2})`;
+                star.style.left = `${Math.random() * 100}%`;
+                star.style.top = `${Math.random() * 100}%`;
+                star.style.animation = `gentleBreathe ${3 + Math.random() * 4}s ease-in-out infinite`;
+                star.style.filter = 'blur(0.3px)';
+                star.style.boxShadow = '0 0 4px rgba(255, 255, 255, 0.3)';
+                starsContainer.appendChild(star);
+            }
+        }
+
+        // Create gentle snowfall
+        function createSnowflakes() {
+            const body = document.body;
+            const isMobile = window.innerWidth <= 768;
+            const count = isMobile ? 80 : 120;
+
+            for (let i = 0; i < count; i++) {
+                const snowflake = document.createElement('div');
+                snowflake.className = 'snowflake';
+                snowflake.style.left = `${Math.random() * 100}%`;
+                snowflake.style.top = `-${Math.random() * 20}vh`;
+                snowflake.style.width = `${Math.random() * (isMobile ? 3 : 4) + 2}px`;
+                snowflake.style.height = snowflake.style.width;
+                snowflake.style.opacity = '0';
+                snowflake.style.animationDuration = `${Math.random() * 4 + (isMobile ? 5 : 6.3)}s`;
+                snowflake.style.animationDelay = `${Math.random() * 3}s`;
+                body.appendChild(snowflake);
+
+                // 添加可见性类
+                setTimeout(() => {
+                    snowflake.classList.add('visible');
+                }, 100);
+            }
+        }
+
+        // 新的特写雪花生成函数
+        function createCinematicSnow() {
+            const maxSnowflakes = 20;
+            let activeSnowflakes = 0;
+
+            function createSnowflakeGroup() {
+                if (activeSnowflakes >= maxSnowflakes) return;
+
+                // 创建1-3个雪花
+                const count = Math.floor(Math.random() * 2) + 1;
+                
+                for (let i = 0; i < count; i++) {
+                    setTimeout(() => {
+                        if (activeSnowflakes >= maxSnowflakes) return;
+                        createSingleSnowflake();
+                        activeSnowflakes++;
+                    }, i * 200); // 错开时间
+                }
+            }
+
+            function createSingleSnowflake() {
+                const snow = document.createElement('div');
+                snow.className = 'cinematic-snow';
+
+                // 大小随机（40-100px）
+                const size = Math.random() * 60 + 40;
+                snow.style.setProperty('--size', `${size}px`);
+
+                // 起始位置（屏幕上方更远的位置）
+                const startX = Math.random() * 120 - 10; // -10% 到 110%
+                const startY = -30; // 更远的起始位置
+                const startZ = Math.random() * 100;
+
+                // 终点位置
+                const endX = startX + (Math.random() - 0.5) * 20;
+                const endY = 120;
+                const endZ = startZ + (Math.random() - 0.5) * 50;
+
+                // 初始状态完全透明
+                snow.style.opacity = '0';
+                
+                // 设置CSS变量
+                snow.style.setProperty('--startX', `${startX}vw`);
+                snow.style.setProperty('--startY', `${startY}vh`);
+                snow.style.setProperty('--endX', `${endX}vw`);
+                snow.style.setProperty('--endY', `${endY}vh`);
+                snow.style.setProperty('--endZ', `${endZ}px`);
+                
+                // 基于深度的模糊效果
+                const finalBlur = Math.max(1, (100 - endZ) / 20);
+                snow.style.setProperty('--finalBlur', `${finalBlur}px`);
+                
+                // 基于大小和深度的不透明度
+                const opacity = Math.min(0.9, (size / 100) * (endZ / 100));
+                snow.style.setProperty('--opacity', opacity);
+
+                document.body.appendChild(snow);
+
+                // 使用GSAP进行更自然的动画
+                gsap.fromTo(snow, {
+                    xPercent: startX * 100,
+                    yPercent: startY * 100,
+                    scale: 0.1,
+                    opacity: 0,
+                    filter: 'blur(8px)'
+                }, {
+                    xPercent: endX * 100,
+                    yPercent: endY * 100,
+                    scale: 1,
+                    opacity: opacity,
+                    filter: `blur(${finalBlur}px)`,
+                    duration: 8 + Math.random() * 4,
+                    ease: "power1.inOut",
+                    onComplete: () => {
+                        snow.remove();
+                        activeSnowflakes--;
+                    }
+                });
+            }
+
+            // 每4-7秒创建一组雪花
+            setInterval(createSnowflakeGroup, 4000 + Math.random() * 3000);
+
+            // 初始延迟后开始
+            setTimeout(createSnowflakeGroup, 2000);
+        }
+
+        // Create snowflake loader animation
+        function createSnowflakeLoader() {
+            const loader = document.querySelector('.loader');
+            const flakeCount = 12;
+            const radius = 30;
+
+            for (let i = 0; i < flakeCount; i++) {
+                const flake = document.createElement('div');
+                flake.className = 'snowflake-loader';
+                
+                const angle = (i / flakeCount) * Math.PI * 2;
+                const delay = i * (1 / flakeCount);
+
+                flake.style.animation = `
+                    softGlow 2s ease-in-out infinite ${delay}s
+                `;
+
+                // Position in a circle
+                const x = Math.cos(angle) * radius;
+                const y = Math.sin(angle) * radius;
+                flake.style.transform = `translate(${x}px, ${y}px)`;
+
+                loader.appendChild(flake);
+            }
+        }
+
+        // Add magical lights
+        function createMagicalLights() {
+            const lightsCount = 5;
+            const container = document.body;
+            
+            for (let i = 0; i < lightsCount; i++) {
+                const light = document.createElement('div');
+                light.className = 'magical-light';
+                
+                // Position lights in artistic locations
+                const positions = [
+                    { left: '5%', top: '15%' },
+                    { right: '8%', top: '25%' },
+                    { left: '12%', bottom: '20%' },
+                    { right: '15%', bottom: '30%' },
+                    { left: '50%', top: '8%' }
+                ];
+                
+                Object.assign(light.style, positions[i]);
+                light.style.animationDelay = `${i * 0.8}s`;
+                
+                container.appendChild(light);
+            }
+        }
+
+        /* 优化魔法效果分布 */
+        function createMagicalElements() {
+            const spells = [
+                'Lumos Maxima',
+                'Wingardium Leviosa',
+                'Expecto Patronum',
+                'Alohomora',
+                'Nox',
+                'Incendio',
+                'Protego',
+                'Accio'
+            ];
+            
+            // 根据屏幕大小调整网格
+            const isMobile = window.innerWidth <= 768;
+            const isTablet = window.innerWidth <= 1024 && window.innerWidth > 768;
+            const gridSize = isMobile ? 3 : (isTablet ? 4 : 5); // 移动端3x3，平板4x4，桌面端5x5
+            let grid = [];
+            
+            // 初始化网格
+            function initGrid() {
+                grid = [];
+                for (let i = 0; i < gridSize; i++) {
+                    for (let j = 0; j < gridSize; j++) {
+                        grid.push({
+                            x: i,
+                            y: j,
+                            occupied: false,
+                            lastUsed: 0 // 记录上次使用时间
+                        });
+                    }
+                }
+            }
+            
+            // 获取可用的网格位置，优先选择长时间未使用的格子
+            function getAvailableCell() {
+                const now = Date.now();
+                const availableCells = grid.filter(cell => !cell.occupied);
+                
+                if (availableCells.length === 0) {
+                    initGrid();
+                    return grid[Math.floor(Math.random() * grid.length)];
+                }
+                
+                // 按最后使用时间排序，优先使用最久未使用的格子
+                availableCells.sort((a, b) => a.lastUsed - b.lastUsed);
+                
+                // 从最久未使用的格子中随机选择一个
+                const randomIndex = Math.floor(Math.random() * Math.min(3, availableCells.length));
+                const cell = availableCells[randomIndex];
+                cell.lastUsed = now;
+                return cell;
+            }
+            
+            function createSpellElement() {
+                const cell = getAvailableCell();
+                cell.occupied = true;
+                
+                // 计算基础位置，考虑屏幕比例
+                const aspectRatio = window.innerWidth / window.innerHeight;
+                
+                // 为桌面端重新计算位置
+                let finalX, finalY;
+                
+                if (!isMobile && !isTablet) {
+                    // 桌面端：将屏幕划分为更大的区域，确保更均匀的分布
+                    const sectionX = Math.floor(Math.random() * 5); // 0-4
+                    const sectionY = Math.floor(Math.random() * 5); // 0-4
+                    
+                    // 在每个区域内添加随机偏移
+                    const baseX = (sectionX * 20) + 10; // 每个区域20%宽度，居中偏移10%
+                    const baseY = (sectionY * 20) + 10;
+                    
+                    // 在区域内随机偏移
+                    const offsetX = (Math.random() - 0.5) * 15; // ±7.5%偏移
+                    const offsetY = (Math.random() - 0.5) * 15;
+                    
+                    finalX = Math.max(5, Math.min(95, baseX + offsetX));
+                    finalY = Math.max(5, Math.min(95, baseY + offsetY));
+                } else {
+                    // 移动端和平板端保持原有逻辑
+                    const baseX = (cell.x / gridSize) * 100;
+                    const baseY = (cell.y / gridSize) * 100;
+                    const offsetRange = isMobile ? 10 : 15;
+                    const offsetX = (Math.random() - 0.5) * offsetRange;
+                    const offsetY = (Math.random() - 0.5) * (offsetRange / aspectRatio);
+                    const safeMargin = isMobile ? 10 : 5;
+                    finalX = Math.max(safeMargin, Math.min(100 - safeMargin, baseX + offsetX));
+                    finalY = Math.max(safeMargin, Math.min(100 - safeMargin, baseY + offsetY));
+                }
+                
+                // 随机选择咒语
+                const spell = spells[Math.floor(Math.random() * spells.length)];
+                
+                // 创建魔杖光芒
+                const light = document.createElement('div');
+                light.className = 'wand-light';
+                
+                const pos = {
+                    left: `${finalX}%`,
+                    top: `${finalY}%`
+                };
+                
+                Object.assign(light.style, pos);
+                
+                // 创建咒语文字
+                const spellText = document.createElement('div');
+                spellText.className = 'spell-text';
+                spellText.textContent = spell;
+                
+                // 根据屏幕大小调整咒语样式和移动范围
+                if (isMobile) {
+                    spellText.style.fontSize = '1.2rem';
+                    const moveRange = 20;
+                    const moveX = (Math.random() - 0.5) * moveRange;
+                    const moveY = (Math.random() - 0.5) * moveRange;
+                    spellText.style.setProperty('--moveX', `${moveX}px`);
+                    spellText.style.setProperty('--moveY', `${moveY}px`);
+                } else {
+                    const moveRange = isTablet ? 30 : 50; // 桌面端增加移动范围
+                    const moveX = (Math.random() - 0.5) * moveRange;
+                    const moveY = (Math.random() - 0.5) * moveRange;
+                    spellText.style.setProperty('--moveX', `${moveX}px`);
+                    spellText.style.setProperty('--moveY', `${moveY}px`);
+                }
+                
+                Object.assign(spellText.style, pos);
+                
+                // 添加到页面
+                document.body.appendChild(light);
+                document.body.appendChild(spellText);
+                
+                // 设置元素移除时间并随机化持续时间
+                const baseDuration = isMobile ? 6000 : (isTablet ? 7000 : 8000);
+                const duration = baseDuration + (Math.random() - 0.5) * 2000; // 添加随机变化
+                
+                setTimeout(() => {
+                    light.remove();
+                    spellText.remove();
+                    cell.occupied = false;
+                }, duration);
+            }
+            
+            // 初始化网格
+            initGrid();
+            
+            // 初始创建咒语
+            const initialSpells = isMobile ? 2 : (isTablet ? 3 : 4);
+            for (let i = 0; i < initialSpells; i++) {
+                setTimeout(() => createSpellElement(), i * 2000);
+            }
+            
+            // 定期创建新咒语
+            const maxSpells = isMobile ? 3 : (isTablet ? 4 : 5);
+            const baseInterval = isMobile ? 8000 : (isTablet ? 7000 : 6000);
+            
+            setInterval(() => {
+                if (document.querySelectorAll('.spell-text').length < maxSpells) {
+                    createSpellElement();
+                }
+            }, baseInterval + Math.random() * 4000);
+            
+            // 监听窗口大小变化
+            window.addEventListener('resize', () => {
+                // 重新初始化网格
+                initGrid();
+            });
+        }
+
+        // 监听窗口大小变化
+        window.addEventListener('resize', () => {
+            const isMobile = window.innerWidth <= 768;
+            document.documentElement.style.setProperty('--content-padding', 
+                isMobile ? '1rem' : 'clamp(1rem, 5vw, 3rem)');
+        });
+    </script>
+</body>
+</html>
