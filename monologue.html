@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星空独白</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+            background: #000;
+            font-family: 'Arial', sans-serif;
+            color: #fff;
+        }
+
+        #scene-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(to bottom, #0a1a2a, #000);
+        }
+
+        .text-container {
+            position: fixed;
+            top: 55%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 76vw;
+            max-width: 900px;
+            height: 18rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: none;
+            z-index: 100;
+            overflow: hidden;
+            mask-image: linear-gradient(
+                to bottom,
+                transparent 0%,
+                black 15%,
+                black 85%,
+                transparent 100%
+            );
+            -webkit-mask-image: linear-gradient(
+                to bottom,
+                transparent 0%,
+                black 15%,
+                black 85%,
+                transparent 100%
+            );
+        }
+
+        .text-scroll-container {
+            position: absolute;
+            width: 100%;
+            transition: transform 2s linear;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .monologue-text {
+            width: 100%;
+            font-family: 'Cinzel', serif;
+            font-size: clamp(1.5rem, 3.2vw, 2.2rem);
+            font-weight: 400;
+            line-height: 1.5;
+            height: 5.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            letter-spacing: 0.05em;
+            word-spacing: 0.15em;
+            text-align: center;
+            color: rgba(255, 255, 255, 0);
+            text-shadow: 0 0 25px rgba(255, 255, 255, 0.3),
+                         0 0 45px rgba(255, 255, 255, 0.2);
+            opacity: 0;
+            transform: translateY(5px);
+            transition: all 1.6s cubic-bezier(0.23, 1, 0.32, 1);
+            margin: 0.1rem 0;
+            will-change: transform, opacity;
+        }
+
+        .monologue-text.visible {
+            opacity: 1;
+            transform: translateY(0);
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        .char {
+            display: inline-block;
+            opacity: 0;
+            transform: translateY(3px);
+            color: rgba(255, 255, 255, 0);
+            text-shadow: 0 0 25px rgba(255, 255, 255, 0.3),
+                         0 0 45px rgba(255, 255, 255, 0.2);
+            transition: all 0.8s ease-out;
+            will-change: transform, opacity;
+            margin: 0 0.01em;
+        }
+
+        .char.visible {
+            opacity: 1;
+            transform: translateY(0);
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        .continue-hint {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'Noto Serif JP', serif;
+            font-size: 1rem;
+            letter-spacing: 0.1em;
+            color: rgba(255, 255, 255, 0.6);
+            opacity: 0;
+            transition: all 0.8s ease-out;
+            cursor: pointer;
+            z-index: 200;
+            pointer-events: auto;
+        }
+
+        .continue-hint.visible {
+            opacity: 0.6;
+            animation: gentlePulse 3s ease-in-out infinite;
+        }
+
+        @keyframes gentlePulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 0.8; }
+        }
+
+        .char {
+            display: inline-block;
+            opacity: 0;
+            transform: translateY(5px);
+            transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+        }
+
+        .char.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .continue-hint {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.7);
+            opacity: 0;
+            transition: opacity 0.5s ease-out;
+            cursor: pointer;
+            z-index: 200;
+            pointer-events: auto;
+        }
+
+        .continue-hint.visible {
+            opacity: 1;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div id="scene-container"></div>
+    <div id="continue-hint" class="continue-hint">点击继续</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <!-- 保留现有的着色器代码 -->
+    <script type="x-shader/x-vertex" id="star-vertex">
+        uniform float time;
+        uniform float pixelRatio;
+        attribute float size;
+        attribute vec3 color;
+        varying vec3 vColor;
+
+        void main() {
+            vColor = color;
+            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+            
+            float brightness = 0.7 + 0.3 * sin(time * 0.5 + position.x * 0.5 + position.y * 0.5);
+            float depth = 1.0 - (-mvPosition.z / 200.0);
+            
+            gl_PointSize = size * pixelRatio * brightness * depth;
+            gl_Position = projectionMatrix * mvPosition;
+        }
+    </script>
+
+    <script type="x-shader/x-fragment" id="star-fragment">
+        varying vec3 vColor;
+
+        void main() {
+            vec2 center = gl_PointCoord - vec2(0.5);
+            float dist = length(center);
+            
+            float alpha = 1.0 - smoothstep(0.3, 0.5, dist);
+            float glow = exp(-2.0 * dist);
+            vec3 finalColor = vColor + glow * 0.5;
+            
+            gl_FragColor = vec4(finalColor, alpha);
+        }
+    </script>
+
+    <script>
+        // 简化的场景配置
+        const config = {
+            scene: {
+                camera: {
+                    fov: 60,      // 减小视场角以增加沉浸感
+                    near: 0.1,
+                    far: 2000,    // 增加远平面距离
+                    position: { x: 0, y: 0, z: 20 }  // 稍微调整相机位置
+                }
+            },
+            starfield: {
+                count: 12000,  // 增加星星数量
+                size: { 
+                    min: 0.08, 
+                    max: 4.0   
+                },
+                range: 600,    // 显著增加深度范围
+                colors: {
+                    base: new THREE.Color(0x1a2a4a),      
+                    highlight: new THREE.Color(0xaac6e6),  
+                    variants: [  
+                        new THREE.Color(0xffd700),  // 金色
+                        new THREE.Color(0xff69b4),  // 粉色
+                        new THREE.Color(0x00ff87),  // 翠绿色
+                        new THREE.Color(0x9370db),  // 紫色
+                        new THREE.Color(0x40e0d0),  // 青色
+                        new THREE.Color(0xff6b6b),  // 红色
+                        new THREE.Color(0x4169e1),  // 皇家蓝
+                        new THREE.Color(0xffa500),  // 橙色
+                        new THREE.Color(0xe6c3ff),  // 淡紫色
+                        new THREE.Color(0x98fb98),  // 淡绿色
+                        new THREE.Color(0x87ceeb),  // 天蓝色
+                        new THREE.Color(0xdda0dd)   // 梅红色
+                    ]
+                },
+                layers: [  // 定义更细致的星空层次
+                    { 
+                        distance: 0.15,   // 最近层
+                        sizeScale: 1.4, 
+                        colorIntensity: 1.4, 
+                        count: 0.1       // 10% 的星星
+                    },
+                    { 
+                        distance: 0.3,    // 近层
+                        sizeScale: 1.2, 
+                        colorIntensity: 1.2, 
+                        count: 0.15      // 15% 的星星
+                    },
+                    { 
+                        distance: 0.5,    // 中层
+                        sizeScale: 1.0, 
+                        colorIntensity: 1.0, 
+                        count: 0.25      // 25% 的星星
+                    },
+                    { 
+                        distance: 0.7,    // 远层
+                        sizeScale: 0.8, 
+                        colorIntensity: 0.8, 
+                        count: 0.25      // 25% 的星星
+                    },
+                    { 
+                        distance: 1.0,    // 最远层
+                        sizeScale: 0.6, 
+                        colorIntensity: 0.6, 
+                        count: 0.25      // 25% 的星星
+                    }
+                ]
+            },
+            meteor: {
+                spawnInterval: {
+                    min: 100,    
+                    max: 400     
+                },
+                maxMeteors: 35,  // 增加流星数量
+                duration: {
+                    min: 1200,   // 调整速度
+                    max: 2000    
+                },
+                size: {
+                    min: 0.2,   
+                    max: 0.8    
+                },
+                brightness: {
+                    min: 0.8,    
+                    max: 1.2     
+                },
+                trail: {
+                    length: 90,  // 增加尾迹长度
+                    fadeOut: true
+                },
+                depth: {         
+                    range: { min: -100, max: 100 },
+                    speedScale: { min: 0.5, max: 1.6 },
+                    sizeScale: { min: 0.5, max: 1.6 }
+                },
+                direction: {     
+                    x: -1.2,     // 调整为更水平的角度
+                    y: -0.4,     // 减小垂直分量
+                    variance: 0.1  // 减小方向偏差
+                },
+                colors: {
+                    head: new THREE.Color(0xffffff),
+                    tail: new THREE.Color(0x4a90e2),
+                    variants: [  
+                        { head: new THREE.Color(0xffffff), tail: new THREE.Color(0xff1493) },
+                        { head: new THREE.Color(0xffffff), tail: new THREE.Color(0x00ff00) },
+                        { head: new THREE.Color(0xffffff), tail: new THREE.Color(0xffd700) },
+                        { head: new THREE.Color(0xffffff), tail: new THREE.Color(0x9400d3) },
+                        { head: new THREE.Color(0xffffff), tail: new THREE.Color(0xff4500) },
+                        { head: new THREE.Color(0xffffff), tail: new THREE.Color(0x00ffff) },
+                        { head: new THREE.Color(0xffffff), tail: new THREE.Color(0xff8c00) },
+                        { head: new THREE.Color(0xffffff), tail: new THREE.Color(0xff69b4) }
+                    ]
+                }
+            },
+            snow: {
+                count: 5000,
+                size: { min: 0.2, max: 0.8 },
+                speed: { min: 0.02, max: 0.08 },
+                wind: { x: 0.5, y: -1, z: 0.3 },
+                range: { x: 100, y: 100, z: 50 },
+                opacity: { start: 0, target: 0.6, duration: 5 }
+            },
+            light: {
+                color: 0xffd27d,
+                intensity: { start: 0, target: 1.5, duration: 8 },
+                position: { x: 0, y: -10, z: 5 }
+            },
+            text: {
+                sequences: [
+                    "In  this  cold  winter  night,  I  want  to  tell  you  something...",
+                    "Each  falling  star  carries  my  thoughts  of  you...",
+                    "Every  snowflake  bears  my  anticipation...",
+                    "In  this  vast  world,  destiny  led  me  to  you...",
+                    "Like  a  predestined  encounter  written  in  the  stars...",
+                    "Let  our  story  continue  beneath  this  starlit  sky...",
+                    "Dear  Jenny,  this  is  the  world  I  created  for  you...",
+                    "I  hope  you  can  feel  every  bit  of  my  heart..."
+                ],
+                charDelay: 30,           // 减少字符显示间隔
+                charFadeDuration: 800,   // 减少字符淡入时间
+                lineDelay: 0,            // 保持无行间停顿
+                scrollDuration: 2000,    // 滚动动画时间
+                visibleLines: 3,         // 同时可见的行数
+                breathingCycle: 4000     // 呼吸周期
+            }
+        };
+
+        // 流星类
+        class Meteor {
+            constructor(scene, config) {
+                this.scene = scene;
+                this.config = config;
+                this.isActive = false;
+                this.progress = 0;
+                this.startTime = 0;
+                this.duration = 0;
+                this.startPosition = new THREE.Vector3();
+                this.direction = new THREE.Vector3();
+                this.createMeteor();
+            }
+
+            createMeteor() {
+                const { trail } = this.config.meteor;
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(trail.length * 3);
+                const sizes = new Float32Array(trail.length);
+                const colors = new Float32Array(trail.length * 3);
+                const opacities = new Float32Array(trail.length);
+
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                geometry.setAttribute('opacity', new THREE.BufferAttribute(opacities, 1));
+
+                const material = new THREE.ShaderMaterial({
+                    uniforms: {
+                        time: { value: 0 },
+                        pixelRatio: { value: window.devicePixelRatio },
+                        fadeOut: { value: 0 }
+                    },
+                    vertexShader: `
+                        uniform float time;
+                        uniform float pixelRatio;
+                        attribute float size;
+                        attribute vec3 color;
+                        attribute float opacity;
+                        varying vec3 vColor;
+                        varying float vAlpha;
+
+                        void main() {
+                            vColor = color;
+                            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                            gl_PointSize = size * pixelRatio * (300.0 / -mvPosition.z);
+                            gl_Position = projectionMatrix * mvPosition;
+                            vAlpha = opacity;
+                        }
+                    `,
+                    fragmentShader: `
+                        uniform float time;
+                        uniform float fadeOut;
+                        varying vec3 vColor;
+                        varying float vAlpha;
+
+                        void main() {
+                            vec2 center = gl_PointCoord - vec2(0.5);
+                            float dist = length(center);
+                            
+                            // 创建柔和的光晕效果
+                            float glow = exp(-2.0 * dist);
+                            
+                            // 创建核心部分
+                            float core = smoothstep(0.125, 0.0, dist);
+                            
+                            // 创建外围光晕
+                            float halo = (1.0 - smoothstep(0.3, 0.5, dist));
+                            
+                            // 组合效果
+                            float brightness = core * 0.9 + halo * 0.3 + glow * 0.2;
+                            
+                            // 添加一些随机闪烁
+                            float flicker = sin(time * 10.0 + gl_FragCoord.x * 0.1) * 0.05 + 0.95;
+                            
+                            vec3 finalColor = vColor * brightness * flicker;
+                            float alpha = brightness * vAlpha * (1.0 - fadeOut);
+                            
+                            gl_FragColor = vec4(finalColor, alpha);
+                        }
+                    `,
+                    transparent: true,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false
+                });
+
+                this.points = new THREE.Points(geometry, material);
+                this.scene.add(this.points);
+            }
+
+            spawn() {
+                this.isActive = true;
+                this.progress = 0;
+                this.startTime = Date.now();
+                this.duration = this.getRandomDuration();
+                
+                // 随机选择颜色变体
+                const { colors } = this.config.meteor;
+                const useVariant = Math.random() > 0.5; // 50% 概率使用变体颜色
+                if (useVariant) {
+                    const variant = colors.variants[Math.floor(Math.random() * colors.variants.length)];
+                    this.currentColors = variant;
+                } else {
+                    this.currentColors = {
+                        head: colors.head,
+                        tail: colors.tail
+                    };
+                }
+
+                // 设置深度和相关缩放
+                const { depth } = this.config.meteor;
+                this.depth = depth.range.min + Math.random() * (depth.range.max - depth.range.min);
+                this.speedScale = depth.speedScale.min + 
+                    (1 - (this.depth - depth.range.min) / (depth.range.max - depth.range.min)) * 
+                    (depth.speedScale.max - depth.speedScale.min);
+                this.sizeScale = depth.sizeScale.min + 
+                    (1 - (this.depth - depth.range.min) / (depth.range.max - depth.range.min)) * 
+                    (depth.sizeScale.max - depth.sizeScale.min);
+                
+                // 统一的起始位置（右上角区域）
+                const { direction } = this.config.meteor;
+                const variance = direction.variance;
+                
+                // 在右上角区域随机生成
+                this.startPosition.set(
+                    60 + Math.random() * 40,  // 右侧
+                    30 + Math.random() * 40,  // 上方
+                    this.depth
+                );
+
+                // 基于配置的方向，添加少许随机偏差
+                this.direction.set(
+                    direction.x + (Math.random() * 2 - 1) * variance,
+                    direction.y + (Math.random() * 2 - 1) * variance,
+                    0
+                );
+                
+                this.direction.normalize();
+                
+                // 根据深度调整速度
+                this.duration = this.duration / this.speedScale;
+            }
+
+            update() {
+                if (!this.isActive) return;
+
+                const currentTime = Date.now();
+                const elapsed = currentTime - this.startTime;
+                this.progress = Math.min(elapsed / this.duration, 1);
+
+                if (this.progress >= 1) {
+                    this.isActive = false;
+                    this.scene.remove(this.points);
+                    return;
+                }
+
+                const { trail } = this.config.meteor;
+                const positions = this.points.geometry.attributes.position.array;
+                const colors = this.points.geometry.attributes.color.array;
+                const sizes = this.points.geometry.attributes.size.array;
+                const opacities = this.points.geometry.attributes.opacity.array;
+
+                // 更新流星位置
+                const currentPos = new THREE.Vector3();
+                const arcHeight = Math.sin(this.progress * Math.PI) * 2; // 减小弧度
+                
+                for (let i = 0; i < trail.length; i++) {
+                    const trailProgress = this.progress - (i / trail.length) * 0.15; // 减小尾迹间隔
+                    if (trailProgress <= 0) continue;
+
+                    const t = Math.min(trailProgress, 1);
+                    currentPos.copy(this.startPosition)
+                        .add(this.direction.clone().multiplyScalar(t * 120)); // 增加移动距离
+                    
+                    // 添加轻微的弧线效果
+                    currentPos.y += arcHeight * (1 - t);
+
+                    const baseIndex = i * 3;
+                    positions[baseIndex] = currentPos.x;
+                    positions[baseIndex + 1] = currentPos.y;
+                    positions[baseIndex + 2] = currentPos.z;
+
+                    // 更新颜色和大小
+                    const fadeOut = Math.pow(i / trail.length, 1.5);
+                    const color = this.currentColors.head.clone()
+                        .lerp(this.currentColors.tail, fadeOut);
+                    
+                    colors[baseIndex] = color.r;
+                    colors[baseIndex + 1] = color.g;
+                    colors[baseIndex + 2] = color.b;
+
+                    // 根据深度调整大小和不透明度
+                    const sizeScale = Math.pow(1 - fadeOut, 1.5) * this.sizeScale;
+                    sizes[i] = this.config.meteor.size.max * sizeScale;
+                    opacities[i] = Math.pow(1 - fadeOut, 1.2);
+                }
+
+                this.points.geometry.attributes.position.needsUpdate = true;
+                this.points.geometry.attributes.color.needsUpdate = true;
+                this.points.geometry.attributes.size.needsUpdate = true;
+                this.points.geometry.attributes.opacity.needsUpdate = true;
+                this.points.material.uniforms.time.value = this.progress * 10;
+                this.points.material.uniforms.fadeOut.value = Math.max(0, (this.progress - 0.8) / 0.2);
+            }
+
+            getRandomDuration() {
+                const { min, max } = this.config.meteor.duration;
+                return min + Math.random() * (max - min);
+            }
+
+            dispose() {
+                if (this.points) {
+                    this.scene.remove(this.points);
+                    this.points.geometry.dispose();
+                    this.points.material.dispose();
+                }
+            }
+        }
+
+        // 流星管理器
+        class MeteorSystem {
+            constructor(scene, config) {
+                this.scene = scene;
+                this.config = config;
+                this.meteors = [];
+                this.lastSpawnTime = Date.now();
+                this.nextSpawnInterval = this.getRandomInterval();
+                this.isActive = true;
+            }
+
+            update() {
+                if (!this.isActive) return;
+
+                try {
+                    const currentTime = Date.now();
+                    
+                    // 清理不活跃的流星
+                    this.meteors = this.meteors.filter(meteor => {
+                        if (!meteor.isActive) {
+                            try {
+                                meteor.dispose();
+                            } catch (e) {
+                                console.warn('Error disposing meteor:', e);
+                            }
+                            return false;
+                        }
+                        return true;
+                    });
+
+                    // 检查是否需要生成新流星
+                    if (currentTime - this.lastSpawnTime > this.nextSpawnInterval &&
+                        this.meteors.length < this.config.meteor.maxMeteors) {
+                        this.spawnMeteor();
+                        this.lastSpawnTime = currentTime;
+                        this.nextSpawnInterval = this.getRandomInterval();
+                    }
+
+                    // 更新现有流星
+                    this.meteors.forEach(meteor => {
+                        try {
+                            meteor.update();
+                        } catch (e) {
+                            console.warn('Error updating meteor:', e);
+                            meteor.isActive = false;
+                        }
+                    });
+                } catch (e) {
+                    console.error('Error in meteor system update:', e);
+                }
+            }
+
+            spawnMeteor() {
+                try {
+                    const meteor = new Meteor(this.scene, this.config);
+                    meteor.spawn();
+                    this.meteors.push(meteor);
+                } catch (e) {
+                    console.error('Error spawning meteor:', e);
+                }
+            }
+
+            getRandomInterval() {
+                const { min, max } = this.config.meteor.spawnInterval;
+                return min + Math.random() * (max - min);
+            }
+
+            dispose() {
+                this.isActive = false;
+                this.meteors.forEach(meteor => {
+                    try {
+                        meteor.dispose();
+                    } catch (e) {
+                        console.warn('Error disposing meteor:', e);
+                    }
+                });
+                this.meteors = [];
+            }
+        }
+
+        // 场景管理器 - 简化版
+        class SceneManager {
+            constructor() {
+                this.init();
+                this.createStarfield();
+                this.meteorSystem = new MeteorSystem(this.scene, config);
+                this.createSnowSystem();
+                this.createLightSystem();
+                this.textSystem = new TextSystem(this);
+                this.bindEvents();
+                this.animate();
+
+                // 启动雪花渐入动画
+                this.startSnowFadeIn();
+                this.startLightFadeIn();
+            }
+
+            init() {
+                this.scene = new THREE.Scene();
+                
+                const { fov, near, far, position } = config.scene.camera;
+                this.camera = new THREE.PerspectiveCamera(
+                    fov,
+                    window.innerWidth / window.innerHeight,
+                    near,
+                    far
+                );
+                this.camera.position.set(position.x, position.y, position.z);
+
+                this.renderer = new THREE.WebGLRenderer({
+                    antialias: true,
+                    alpha: true
+                });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                document.getElementById('scene-container').appendChild(this.renderer.domElement);
+
+                this.clock = new THREE.Clock();
+                
+                window.addEventListener('resize', () => this.onResize());
+            }
+
+            createStarfield() {
+                const { count, size, range, colors, layers } = config.starfield;
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(count * 3);
+                const sizes = new Float32Array(count);
+                const initialColors = new Float32Array(count * 3);
+
+                let currentIndex = 0;
+                layers.forEach(layer => {
+                    const layerCount = Math.floor(count * layer.count);
+                    for (let i = 0; i < layerCount; i++) {
+                        const i3 = currentIndex * 3;
+                        
+                        // 使用球面分布创造更自然的星空
+                        const theta = Math.random() * Math.PI * 2;
+                        const phi = Math.acos(Math.random() * 2 - 1);
+                        const radius = range * layer.distance * (0.9 + Math.random() * 0.1);
+                        
+                        positions[i3] = radius * Math.sin(phi) * Math.cos(theta);
+                        positions[i3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+                        positions[i3 + 2] = radius * Math.cos(phi);
+
+                        // 根据层次调整大小
+                        const sizeBase = size.min + (size.max - size.min) * Math.pow(Math.random(), 2);
+                        sizes[currentIndex] = sizeBase * layer.sizeScale;
+
+                        // 根据层次和随机性选择颜色
+                        let color;
+                        if (Math.random() > 0.7) {
+                            color = colors.variants[Math.floor(Math.random() * colors.variants.length)].clone();
+                        } else {
+                            const gradientFactor = Math.random();
+                            color = colors.base.clone().lerp(colors.highlight, gradientFactor);
+                            if (Math.random() > 0.5) {
+                                color.offsetHSL(0, 0, (Math.random() - 0.5) * 0.2);
+                            }
+                        }
+                        color.multiplyScalar(layer.colorIntensity);
+                        
+                        initialColors[i3] = color.r;
+                        initialColors[i3 + 1] = color.g;
+                        initialColors[i3 + 2] = color.b;
+
+                        currentIndex++;
+                    }
+                });
+
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(initialColors, 3));
+                geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+                const material = new THREE.ShaderMaterial({
+                    uniforms: {
+                        time: { value: 0 },
+                        pixelRatio: { value: this.renderer.getPixelRatio() }
+                    },
+                    vertexShader: document.getElementById('star-vertex').textContent,
+                    fragmentShader: document.getElementById('star-fragment').textContent,
+                    transparent: true,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false
+                });
+
+                this.starfield = new THREE.Points(geometry, material);
+                this.scene.add(this.starfield);
+            }
+
+            createSnowSystem() {
+                const { count, size, range } = config.snow;
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(count * 3);
+                const sizes = new Float32Array(count);
+                const randomData = new Float32Array(count * 4); // x, y, z为随机偏移，w为速度
+
+                for (let i = 0; i < count; i++) {
+                    const i3 = i * 3;
+                    const i4 = i * 4;
+
+                    // 位置
+                    positions[i3] = (Math.random() - 0.5) * range.x;
+                    positions[i3 + 1] = (Math.random() - 0.5) * range.y;
+                    positions[i3 + 2] = (Math.random() - 0.5) * range.z;
+
+                    // 大小
+                    sizes[i] = size.min + Math.random() * (size.max - size.min);
+
+                    // 随机数据
+                    randomData[i4] = Math.random() * 2 - 1;     // x偏移
+                    randomData[i4 + 1] = Math.random() * 2 - 1; // y偏移
+                    randomData[i4 + 2] = Math.random() * 2 - 1; // z偏移
+                    randomData[i4 + 3] = Math.random();         // 速度变化
+                }
+
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+                geometry.setAttribute('randomData', new THREE.BufferAttribute(randomData, 4));
+
+                const material = new THREE.ShaderMaterial({
+                    uniforms: {
+                        time: { value: 0 },
+                        pixelRatio: { value: this.renderer.getPixelRatio() },
+                        globalOpacity: { value: 0 },
+                        wind: { value: new THREE.Vector3(config.snow.wind.x, config.snow.wind.y, config.snow.wind.z) }
+                    },
+                    vertexShader: `
+                        uniform float time;
+                        uniform float pixelRatio;
+                        uniform vec3 wind;
+                        attribute float size;
+                        attribute vec4 randomData;
+                        varying float vAlpha;
+
+                        void main() {
+                            vec3 pos = position;
+                            
+                            // 添加风的影响和随机运动
+                            float speed = randomData.w;
+                            vec3 offset = randomData.xyz;
+                            
+                            pos.x += sin(time * speed + offset.x) * 2.0 + wind.x * time;
+                            pos.y = mod(pos.y - time * (5.0 + speed * 5.0) + wind.y * time, 100.0) - 50.0;
+                            pos.z += cos(time * speed + offset.z) * 2.0 + wind.z * time;
+
+                            vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+                            float depth = 1.0 - (-mvPosition.z / 200.0);
+                            
+                            gl_PointSize = size * pixelRatio * depth;
+                            gl_Position = projectionMatrix * mvPosition;
+                            
+                            // 计算透明度
+                            vAlpha = depth * 0.5 + 0.5;
+                        }
+                    `,
+                    fragmentShader: `
+                        uniform float globalOpacity;
+                        varying float vAlpha;
+
+                        void main() {
+                            vec2 center = gl_PointCoord - vec2(0.5);
+                            float dist = length(center);
+                            float alpha = (1.0 - smoothstep(0.3, 0.5, dist)) * vAlpha * globalOpacity;
+                            
+                            vec3 color = vec3(1.0);
+                            gl_FragColor = vec4(color, alpha);
+                        }
+                    `,
+                    transparent: true,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false
+                });
+
+                this.snowSystem = new THREE.Points(geometry, material);
+                this.scene.add(this.snowSystem);
+            }
+
+            startSnowFadeIn() {
+                const { opacity } = config.snow;
+                const startTime = this.clock.getElapsedTime();
+                
+                const updateOpacity = () => {
+                    const currentTime = this.clock.getElapsedTime();
+                    const progress = Math.min((currentTime - startTime) / opacity.duration, 1);
+                    const currentOpacity = opacity.start + (opacity.target - opacity.start) * progress;
+                    
+                    if (this.snowSystem) {
+                        this.snowSystem.material.uniforms.globalOpacity.value = currentOpacity;
+                    }
+                    
+                    if (progress < 1) {
+                        requestAnimationFrame(updateOpacity);
+                    }
+                };
+                
+                updateOpacity();
+            }
+
+            createLightSystem() {
+                // 添加环境光
+                this.ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+                this.scene.add(this.ambientLight);
+
+                // 创建主光源
+                const { color, position } = config.light;
+                this.mainLight = new THREE.PointLight(color, 0);
+                this.mainLight.position.set(position.x, position.y, position.z);
+                this.scene.add(this.mainLight);
+
+                // 添加光晕效果
+                const glowGeometry = new THREE.PlaneGeometry(40, 40);
+                const glowMaterial = new THREE.ShaderMaterial({
+                    uniforms: {
+                        time: { value: 0 },
+                        color: { value: new THREE.Color(color) },
+                        intensity: { value: 0 }
+                    },
+                    vertexShader: `
+                        varying vec2 vUv;
+                        void main() {
+                            vUv = uv;
+                            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                        }
+                    `,
+                    fragmentShader: `
+                        uniform float time;
+                        uniform vec3 color;
+                        uniform float intensity;
+                        varying vec2 vUv;
+
+                        void main() {
+                            vec2 center = vUv - 0.5;
+                            float dist = length(center);
+                            
+                            float brightness = intensity * (1.0 - dist * 2.0);
+                            brightness *= 1.0 + 0.2 * sin(time * 2.0); // 添加轻微的呼吸效果
+                            
+                            vec3 finalColor = color * brightness;
+                            float alpha = smoothstep(1.0, 0.0, dist * 2.0) * intensity;
+                            
+                            gl_FragColor = vec4(finalColor, alpha);
+                        }
+                    `,
+                    transparent: true,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false,
+                    side: THREE.DoubleSide
+                });
+
+                this.lightGlow = new THREE.Mesh(glowGeometry, glowMaterial);
+                this.lightGlow.position.copy(this.mainLight.position);
+                this.lightGlow.lookAt(this.camera.position);
+                this.scene.add(this.lightGlow);
+            }
+
+            startLightFadeIn() {
+                const { intensity } = config.light;
+                const startTime = this.clock.getElapsedTime();
+                
+                const updateIntensity = () => {
+                    const currentTime = this.clock.getElapsedTime();
+                    const progress = Math.min((currentTime - startTime) / intensity.duration, 1);
+                    const currentIntensity = intensity.start + (intensity.target - intensity.start) * progress;
+                    
+                    if (this.mainLight) {
+                        this.mainLight.intensity = currentIntensity;
+                    }
+                    
+                    if (this.lightGlow) {
+                        this.lightGlow.material.uniforms.intensity.value = currentIntensity * 0.5;
+                    }
+                    
+                    if (progress < 1) {
+                        requestAnimationFrame(updateIntensity);
+                    }
+                };
+                
+                updateIntensity();
+            }
+
+            bindEvents() {
+                document.addEventListener('click', () => {
+                    if (this.textSystem.isComplete) {
+                        // 触发场景结束回调
+                        this.onSceneComplete && this.onSceneComplete();
+                    }
+                });
+            }
+
+            onResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                const time = this.clock.getElapsedTime();
+
+                if (this.starfield && this.starfield.material.uniforms) {
+                    this.starfield.rotation.y = time * 0.05;
+                    this.starfield.material.uniforms.time.value = time;
+                }
+
+                // 更新流星系统
+                if (this.meteorSystem) {
+                    this.meteorSystem.update();
+                }
+
+                if (this.snowSystem && this.snowSystem.material.uniforms) {
+                    this.snowSystem.material.uniforms.time.value = time;
+                }
+
+                if (this.lightGlow && this.lightGlow.material.uniforms) {
+                    this.lightGlow.material.uniforms.time.value = time;
+                    this.lightGlow.lookAt(this.camera.position);
+                }
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        // 文字系统 - 简化版
+        class TextSystem {
+            constructor(sceneManager) {
+                this.sceneManager = sceneManager;
+                this.container = document.createElement('div');
+                this.container.className = 'text-container';
+                document.body.appendChild(this.container);
+
+                this.scrollContainer = document.createElement('div');
+                this.scrollContainer.className = 'text-scroll-container';
+                this.container.appendChild(this.scrollContainer);
+                
+                this.currentIndex = 0;
+                this.activeLines = [];
+                this.isAnimating = false;
+                this.isComplete = false;
+                this.breathingPhase = 0;
+                this.scrollOffset = 0;
+                this.lineHeight = 6; // 每行高度（rem）
+                this.currentVisibleLines = 0;
+                
+                // 添加电影感字体
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = 'https://fonts.googleapis.com/css2?family=Cinzel:wght@400&display=swap';
+                document.head.appendChild(link);
+                
+                this.showNextLine();
+                this.startBreathingEffect();
+            }
+
+            async showNextLine() {
+                if (this.isComplete) return;
+                
+                const { sequences } = config.text;
+                if (this.currentIndex >= sequences.length) {
+                    this.showContinueHint();
+                    this.isComplete = true;
+                    return;
+                }
+
+                const lineElement = document.createElement('div');
+                lineElement.className = 'monologue-text';
+                this.scrollContainer.appendChild(lineElement);
+                this.activeLines.push(lineElement);
+
+                lineElement.classList.add('visible');
+                this.showLine(lineElement, sequences[this.currentIndex]);
+                
+                this.currentVisibleLines++;
+                
+                if (this.currentVisibleLines > config.text.visibleLines) {
+                    this.scrollOffset -= 5;  // 减小滚动距离
+                    this.scrollContainer.style.transform = `translateY(${this.scrollOffset}rem)`;
+                }
+
+                const textLength = sequences[this.currentIndex].length;
+                const nextLineDelay = textLength * config.text.charDelay * 0.8;  // 调整行切换时间
+
+                this.currentIndex++;
+                setTimeout(() => this.showNextLine(), nextLineDelay);
+            }
+
+            async showLine(element, text) {
+                const chars = text.split('').map(char => {
+                    const span = document.createElement('span');
+                    span.className = 'char';
+                    span.textContent = char;
+                    return span;
+                });
+
+                chars.forEach(char => element.appendChild(char));
+
+                // 连续显示字符
+                chars.forEach((char, index) => {
+                    setTimeout(() => {
+                        char.classList.add('visible');
+                        
+                        // 应用呼吸效果的初始状态
+                        const baseOpacity = 0.95;
+                        const breathingOpacity = 0.05;
+                        char.style.opacity = baseOpacity + breathingOpacity * this.breathingPhase;
+                    }, index * config.text.charDelay);
+                });
+            }
+
+            startBreathingEffect() {
+                const updateBreathing = () => {
+                    if (!this.isComplete) {
+                        const time = performance.now();
+                        this.breathingPhase = (Math.sin(time / config.text.breathingCycle * Math.PI * 2) + 1) / 2;
+                        
+                        // 更新所有可见文字的亮度
+                        this.activeLines.forEach(line => {
+                            const chars = line.querySelectorAll('.char.visible');
+                            chars.forEach(char => {
+                                const baseOpacity = 0.95;
+                                const breathingOpacity = 0.05;
+                                char.style.opacity = baseOpacity + breathingOpacity * this.breathingPhase;
+                                
+                                // 同步更新光晕效果
+                                const baseShadowIntensity = 25;
+                                const breathingShadowIntensity = 20;
+                                const shadowIntensity = baseShadowIntensity + breathingShadowIntensity * this.breathingPhase;
+                                char.style.textShadow = `0 0 ${shadowIntensity}px rgba(255, 255, 255, 0.3),
+                                                       0 0 ${shadowIntensity * 1.8}px rgba(255, 255, 255, 0.2)`;
+                            });
+                        });
+
+                        // 同步光效
+                        if (this.sceneManager.lightGlow) {
+                            const baseIntensity = 0.65;
+                            const breathingIntensity = 0.2;
+                            this.sceneManager.lightGlow.material.uniforms.intensity.value = 
+                                baseIntensity + breathingIntensity * this.breathingPhase;
+                        }
+
+                        requestAnimationFrame(updateBreathing);
+                    }
+                };
+
+                updateBreathing();
+            }
+
+            showContinueHint() {
+                const hint = document.getElementById('continue-hint');
+                hint.classList.add('visible');
+                hint.style.pointerEvents = 'auto';
+            }
+
+            wait(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                window.sceneManager = new SceneManager();
+            } catch (error) {
+                console.error('Scene initialization failed:', error);
+            }
+        });
+    </script>
+</body>
+</html> 

@@ -32,6 +32,9 @@
         
         // 等待 DOM 加载完成
         document.addEventListener('DOMContentLoaded', () => {
+            // 注册 GSAP 插件
+            gsap.registerPlugin(CSSPlugin);
+
             // 初始化所有效果
             initThreeJS();
             createStars();
@@ -45,23 +48,105 @@
             const textTimeline = gsap.timeline({delay: 1});
             
             textTimeline
-                .to('.main-title', {
-                    opacity: 1,
-                    duration: 3,
-                    ease: 'power2.out'
-                })
-                .to('.dedication', {
-                    opacity: 0.7,
-                    y: 0,
+                .fromTo('.main-title', 
+                    { opacity: 0, y: 20 },
+                    { opacity: 1, y: 0, duration: 3, ease: 'power2.out' }
+                )
+                .fromTo('.dedication',
+                    { opacity: 0, y: 20 },
+                    { opacity: 0.7, y: 0, duration: 2, ease: 'power2.out' },
+                    '-=1.5'
+                )
+                .fromTo('.loader-container',
+                    { opacity: 0 },
+                    { opacity: 1, duration: 2, ease: 'power2.out' },
+                    '-=1'
+                );
+
+            // 修改雪花生成函数
+            function createSnowflakes() {
+                const container = document.querySelector('.snowflake-container');
+                const screenWidth = window.innerWidth;
+                const snowflakeCount = Math.floor(screenWidth / 20);
+
+                for (let i = 0; i < snowflakeCount; i++) {
+                    const snowflake = document.createElement('div');
+                    snowflake.className = 'snowflake';
+                    
+                    // 随机参数
+                    const size = Math.random() * 4 + 2;
+                    const startPosition = Math.random() * 100;
+                    const fallDuration = Math.random() * 5 + 8;
+                    const fallDelay = Math.random() * 5;
+                    const blur = Math.random() * 2;
+                    const windDrift = (Math.random() - 0.5) * 200;
+                    
+                    snowflake.style.cssText = `
+                        left: ${startPosition}vw;
+                        top: -10px;
+                        width: ${size}px;
+                        height: ${size}px;
+                        --fall-duration: ${fallDuration}s;
+                        --fall-delay: -${fallDelay}s;
+                        --blur: ${blur}px;
+                        --wind-drift: ${windDrift}px;
+                        --snow-opacity: ${Math.random() * 0.3 + 0.2};
+                    `;
+                    
+                    container.appendChild(snowflake);
+                }
+            }
+
+            // 修改过渡函数
+            function transitionToMonologue() {
+                const pageTransition = document.querySelector('.page-transition');
+                const mainContent = document.querySelector('.text-container');
+                const journeyButton = document.querySelector('.journey-button');
+                const snowflakes = document.querySelectorAll('.snowflake');
+
+                // 增加雪花密度
+                snowflakes.forEach(flake => {
+                    gsap.to(flake, {
+                        opacity: Math.random() * 0.5 + 0.3,
+                        scale: Math.random() * 0.5 + 1,
+                        duration: 2,
+                        ease: 'power2.inOut'
+                    });
+                });
+
+                // 淡出主要内容
+                gsap.to(mainContent, {
+                    opacity: 0,
+                    y: -30,
                     duration: 2,
-                    ease: 'power2.out',
-                    from: { y: 20, opacity: 0 }
-                }, '-=1.5')
-                .to('.loader-container', {
-                    opacity: 1,
-                    duration: 2,
-                    ease: 'power2.out'
-                }, '-=1');
+                    ease: 'power2.inOut'
+                });
+
+                // 淡出按钮
+                gsap.to(journeyButton, {
+                    opacity: 0,
+                    y: 20,
+                    duration: 1.5,
+                    ease: 'power2.inOut'
+                });
+
+                // 激活转场效果
+                pageTransition.classList.add('active');
+
+                // 延迟跳转，确保动画完成
+                setTimeout(() => {
+                    window.location.href = 'monologue.html';
+                }, 2000);
+            }
+
+            // 显示过渡按钮
+            const journeyButton = document.querySelector('.journey-button');
+            setTimeout(() => {
+                journeyButton.classList.add('visible');
+            }, 4000);
+
+            // 添加按钮点击事件
+            journeyButton.addEventListener('click', transitionToMonologue);
         });
     </script>
 
@@ -159,19 +244,12 @@
 
         @keyframes snowfall {
             0% {
-                transform: translateY(-20vh) translateX(0) rotate(0deg) scale(0.8);
-                opacity: 0;
-                filter: blur(1px);
-            }
-            50% {
-                opacity: 0.4;
-                transform: translateY(50vh) translateX(10vw) rotate(180deg) scale(0.9);
-                filter: blur(2px);
+                transform: translateY(0) rotate(0deg);
+                opacity: var(--snow-opacity, 0.5);
             }
             100% {
-                transform: translateY(120vh) translateX(20vw) rotate(360deg) scale(1);
-                opacity: 0;
-                filter: blur(1px);
+                transform: translateY(100vh) translateX(var(--wind-drift)) rotate(360deg);
+                opacity: var(--snow-opacity, 0.5);
             }
         }
 
@@ -285,13 +363,16 @@
         }
 
         .snowflake {
-            position: fixed;
+            position: absolute;
             background: white;
             border-radius: 50%;
             pointer-events: none;
-            animation: snowfall linear infinite;
-            filter: blur(1.5px);
-            box-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+            top: -10px;
+            animation: snowfall var(--fall-duration, 10s) linear infinite;
+            animation-delay: var(--fall-delay, 0s);
+            opacity: var(--snow-opacity, 0.5);
+            filter: blur(var(--blur, 0px));
+            will-change: transform;
         }
 
         .closeup-snowflake {
@@ -850,6 +931,151 @@
         .snowflake.visible {
             opacity: 0.6;
         }
+
+        .fade-out {
+            animation: fadeOut 1.5s ease-in-out forwards;
+        }
+
+        @keyframes fadeOut {
+            0% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(1.1);
+            }
+        }
+
+        .transition-overlay {
+            transition: opacity 1.5s ease-in-out;
+        }
+
+        /* 添加过渡按钮样式 */
+        .journey-button {
+            position: fixed;
+            bottom: 3rem;
+            left: 50%;
+            transform: translate(-50%, 50px);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1.2rem 3rem;
+            color: rgba(255, 255, 255, 0.9);
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.3rem;
+            letter-spacing: 0.25em;
+            cursor: pointer;
+            opacity: 0;
+            backdrop-filter: blur(8px);
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100;
+            border-radius: 2px;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+        }
+
+        .journey-button:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, 0) scale(1.05);
+            letter-spacing: 0.3em;
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
+        }
+
+        .journey-button.visible {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+
+        .journey-button::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.4s ease;
+            opacity: 0;
+        }
+
+        .journey-button:hover::before {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        /* 优化转场效果 */
+        .page-transition {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 2.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .page-transition::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center,
+                rgba(5, 8, 16, 0.7) 0%,
+                rgba(10, 16, 24, 0.85) 40%,
+                rgba(18, 24, 36, 0.95) 100%
+            );
+            opacity: 0;
+            transition: opacity 2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .page-transition.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .page-transition.active::before {
+            opacity: 1;
+        }
+
+        /* 优化雪花效果 */
+        @keyframes snowfall {
+            0% {
+                transform: translateY(0) rotate(0deg);
+                opacity: var(--snow-opacity, 0.5);
+            }
+            100% {
+                transform: translateY(100vh) translateX(var(--wind-drift)) rotate(360deg);
+                opacity: var(--snow-opacity, 0.5);
+            }
+        }
+
+        .snowflake {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            pointer-events: none;
+            top: -10px;
+            animation: snowfall var(--fall-duration, 10s) linear infinite;
+            animation-delay: var(--fall-delay, 0s);
+            opacity: var(--snow-opacity, 0.5);
+            filter: blur(var(--blur, 0px));
+            will-change: transform;
+        }
+
+        .snowflake-container {
+            position: fixed;
+            width: 100vw;
+            height: 100vh;
+            top: 0;
+            left: 0;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 1;
+        }
     </style>
 </head>
 <body class="min-h-screen overflow-hidden">
@@ -889,6 +1115,18 @@
             <p class="loading-text">Lumos Maxima...</p>
         </div>
     </div>
+
+    <!-- 修改转场遮罩 -->
+    <div class="page-transition"></div>
+
+    <!-- 雪花容器 -->
+    <div class="snowflake-container"></div>
+
+    <!-- 添加过渡层 -->
+    <div class="transition-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-primary); opacity: 0; z-index: 9999; pointer-events: none;"></div>
+
+    <!-- 添加过渡按钮 -->
+    <button class="journey-button">开启旅程</button>
 
     <script>
         // Register GSAP plugins
@@ -971,26 +1209,35 @@
 
         // Create gentle snowfall
         function createSnowflakes() {
-            const body = document.body;
-            const isMobile = window.innerWidth <= 768;
-            const count = isMobile ? 80 : 120;
+            const container = document.querySelector('.snowflake-container');
+            const screenWidth = window.innerWidth;
+            const snowflakeCount = Math.floor(screenWidth / 20); // 根据屏幕宽度调整数量
 
-            for (let i = 0; i < count; i++) {
+            for (let i = 0; i < snowflakeCount; i++) {
                 const snowflake = document.createElement('div');
                 snowflake.className = 'snowflake';
-                snowflake.style.left = `${Math.random() * 100}%`;
-                snowflake.style.top = `-${Math.random() * 20}vh`;
-                snowflake.style.width = `${Math.random() * (isMobile ? 3 : 4) + 2}px`;
-                snowflake.style.height = snowflake.style.width;
-                snowflake.style.opacity = '0';
-                snowflake.style.animationDuration = `${Math.random() * 4 + (isMobile ? 5 : 6.3)}s`;
-                snowflake.style.animationDelay = `${Math.random() * 3}s`;
-                body.appendChild(snowflake);
-
-                // 添加可见性类
-                setTimeout(() => {
-                    snowflake.classList.add('visible');
-                }, 100);
+                
+                // 随机参数
+                const size = Math.random() * 4 + 2;
+                const startPosition = Math.random() * 100;
+                const fallDuration = Math.random() * 5 + 8;
+                const fallDelay = Math.random() * 5;
+                const blur = Math.random() * 2;
+                const windDrift = (Math.random() - 0.5) * 200;
+                
+                snowflake.style.cssText = `
+                    left: ${startPosition}vw;
+                    top: -10px;
+                    width: ${size}px;
+                    height: ${size}px;
+                    --fall-duration: ${fallDuration}s;
+                    --fall-delay: -${fallDelay}s;
+                    --blur: ${blur}px;
+                    --wind-drift: ${windDrift}px;
+                    --snow-opacity: ${Math.random() * 0.3 + 0.2};
+                `;
+                
+                container.appendChild(snowflake);
             }
         }
 
