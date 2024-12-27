@@ -178,6 +178,9 @@ class MeteorSystem {
 
 class SceneManager {
   constructor() {
+    // 保存全局配置
+    this.config = config; // 使用外部定义的 config
+
     // 首先初始化性能监控
     this.initializePerformanceMonitoring();
     console.log("Initializing SceneManager...");
@@ -225,25 +228,51 @@ class SceneManager {
   animate() {
     if (!this.animationState.isAnimating) return;
 
-    // 计算帧率和增量时间
     const currentTime = performance.now();
-    const deltaTime = (currentTime - this.animationState.lastUpdateTime) / 1000;
+    const deltaTime = Math.min(
+      (currentTime - this.animationState.lastUpdateTime) / 1000,
+      0.1
+    );
     this.animationState.lastUpdateTime = currentTime;
 
     // 更新性能统计
     this.updatePerformanceStats(deltaTime);
 
-    // 更新场景中的所有动态元素
+    // 更新场景
     this.updateScene(deltaTime);
 
-    // 渲染场景
-    this.renderScene();
+    // 确保在渲染前检查必要组件
+    if (this.scene && this.camera && this.renderer) {
+      // 添加调试信息
+      if (this.debug.logUpdates && this.stats.frames % 300 === 0) {
+        console.log("Rendering frame with:", {
+          cameraPosition: this.camera.position.toArray(),
+          sceneChildren: this.scene.children.map((child) => ({
+            type: child.type,
+            position: child.position.toArray(),
+          })),
+        });
+      }
 
-    // 请求下一帧
-    requestAnimationFrame(this.animate);
+      this.renderer.render(this.scene, this.camera);
+    }
+
+    requestAnimationFrame(this.animate.bind(this));
   }
 
   updatePerformanceStats(deltaTime) {
+    // 添加调试输出
+    if (this.debug.logUpdates && this.stats.frames % 60 === 0) {
+      console.log({
+        fps: this.stats.fps,
+        frameTime: this.stats.frameTime,
+        objects: this.scene ? this.scene.children.length : 0,
+        drawCalls: this.renderer ? this.renderer.info.render.calls : 0,
+      });
+    }
+
+    if (!this.stats || !this.debug) return;
+
     // 更新FPS计数
     this.stats.frames++;
     const timeSinceLastUpdate = performance.now() - this.stats.lastUpdate;
@@ -253,10 +282,21 @@ class SceneManager {
       this.stats.frameTime = timeSinceLastUpdate / this.stats.frames;
       this.stats.frames = 0;
       this.stats.lastUpdate = performance.now();
+
+      // 更新性能面板（如果存在）
+      if (this.debug.showPerformance) {
+        this.updatePerformancePanel();
+      }
     }
   }
 
   updateScene(deltaTime) {
+    // 添加错误检查
+    if (!this.scene || !this.config) {
+      console.warn("Scene or config not initialized");
+      return;
+    }
+
     // 更新流星系统
     if (this.meteorSystem) {
       this.meteorSystem.update(deltaTime);
@@ -288,23 +328,79 @@ class SceneManager {
       );
       this.camera.lookAt(0, 0, 0);
     }
+
+    // 更新星空
+    if (this.starfield && this.starfield.material.uniforms) {
+      this.starfield.material.uniforms.time.value += deltaTime;
+    }
   }
 
   renderScene() {
-    if (this.scene && this.camera && this.renderer) {
+    if (!this.scene || !this.camera || !this.renderer) {
+      console.warn("Essential rendering components not initialized");
+      return;
+    }
+
+    try {
       // 执行渲染
       this.renderer.render(this.scene, this.camera);
 
       // 更新渲染统计
-      if (this.debug.showPerformance) {
-        this.debug.metrics.drawCalls = this.renderer.info.render.calls;
-        this.debug.metrics.triangles = this.renderer.info.render.triangles;
+      if (this.debug && this.debug.showPerformance) {
+        const info = this.renderer.info;
+        this.debug.metrics = {
+          drawCalls: info.render.calls,
+          triangles: info.render.triangles,
+          points: info.render.points,
+          lines: info.render.lines,
+          textures: info.memory ? info.memory.textures : 0,
+          geometries: info.memory ? info.memory.geometries : 0,
+          materials: info.programs ? info.programs.length : 0,
+        };
+
+        // 性能警告检查
+        this.checkPerformanceThresholds();
       }
+    } catch (error) {
+      console.error("Render error:", error);
     }
   }
 
+  checkPerformanceThresholds() {
+    const { metrics, thresholds } = this.debug;
+
+    if (this.stats.fps < thresholds.fps) {
+      console.warn(`Low FPS: ${this.stats.fps.toFixed(1)}`);
+    }
+
+    if (metrics.drawCalls > thresholds.drawCalls) {
+      console.warn(`High draw calls: ${metrics.drawCalls}`);
+    }
+
+    if (metrics.triangles > thresholds.triangles) {
+      console.warn(`High triangle count: ${metrics.triangles}`);
+    }
+  }
+
+  updatePerformancePanel() {
+    const panel = document.getElementById("performance-panel");
+    if (!panel) return;
+
+    const { fps, frameTime } = this.stats;
+    const { drawCalls, triangles, points, lines } = this.debug.metrics;
+
+    panel.innerHTML = `
+      <div>FPS: ${fps.toFixed(1)}</div>
+      <div>Frame Time: ${frameTime.toFixed(1)}ms</div>
+      <div>Draw Calls: ${drawCalls}</div>
+      <div>Triangles: ${triangles}</div>
+      <div>Points: ${points}</div>
+      <div>Lines: ${lines}</div>
+    `;
+  }
+
   initializePerformanceMonitoring() {
-    // 性能监控状态
+    // 初始化性能监控状态
     this.stats = {
       fps: 0,
       frameTime: 0,
@@ -314,29 +410,33 @@ class SceneManager {
       lastUpdate: performance.now(),
     };
 
-    // 调试配置
+    // 初始化调试配置
     this.debug = {
       showPerformance: true,
       logUpdates: true,
       logInterval: 1000, // 日志输出间隔（毫秒）
+      metrics: {
+        drawCalls: 0,
+        triangles: 0,
+        points: 0,
+        lines: 0,
+        textures: 0,
+        geometries: 0,
+        materials: 0,
+      },
+      thresholds: {
+        fps: 30,
+        drawCalls: 1000,
+        triangles: 100000,
+      },
     };
 
-    // 性能配置
-    this.performanceConfig = {
-      throttleFrames: true,
-      targetFPS: 60,
-      minFrameTime: 1000 / 60,
-      cullDistance: 3000,
-      maxVisibleMeteors: 15,
-      maxVisibleStars: 10000,
-      updateFrequency: 1000 / 60, // 60fps的更新频率
-    };
-
-    // 动画状态
+    // 初始化动画状态
     this.animationState = {
+      isAnimating: true,
       lastUpdateTime: performance.now(),
       deltaTime: 0,
-      isAnimating: true,
+      elapsedTime: 0,
     };
 
     console.log("Performance monitoring initialized");
@@ -472,35 +572,52 @@ class SceneManager {
   setupScene() {
     // 创建场景
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.FogExp2(0x000000, 0.00015);
 
-    // 设置场景背景
-    this.scene.background = new THREE.Color(0x000000);
+    // 设置场景背景（使用更亮的颜色以便于调试）
+    this.scene.background = new THREE.Color(0x0a0a14);
+
+    // 添加环境光
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    this.scene.add(ambientLight);
 
     // 创建容器
     this.container = document.getElementById("scene-container");
+    if (!this.container) {
+      console.warn("Scene container not found, creating one");
+      this.container = document.createElement("div");
+      this.container.id = "scene-container";
+      this.container.style.width = "100vw";
+      this.container.style.height = "100vh";
+      this.container.style.position = "fixed";
+      this.container.style.top = "0";
+      this.container.style.left = "0";
+      this.container.style.backgroundColor = "#000"; // 添加背景色
+      document.body.appendChild(this.container);
+    }
+
     this.width = this.container.clientWidth;
     this.height = this.container.clientHeight;
+
+    console.log("Scene container size:", this.width, this.height);
   }
 
   setupCamera() {
     // 创建相机
     this.camera = new THREE.PerspectiveCamera(
-      60,
+      60, // FOV
       this.width / this.height,
       0.1,
-      5000
+      3000
     );
 
-    // 设置初始位置
-    if (this.entranceAnimation && this.entranceAnimation.enabled) {
-      this.camera.position.copy(this.entranceAnimation.startPosition);
-    } else {
-      this.camera.position.set(0, 0, 2000);
-    }
-
-    // 设置相机朝向
+    // 设置相机位置
+    this.camera.position.set(0, 0, 1500);
     this.camera.lookAt(0, 0, 0);
+
+    // 添加调试信息
+    console.log("Camera position:", this.camera.position);
+    console.log("Camera FOV:", this.camera.fov);
+    console.log("Camera aspect:", this.camera.aspect);
   }
 
   setupRenderer() {
@@ -511,14 +628,31 @@ class SceneManager {
       powerPreference: "high-performance",
     });
 
-    // 配置渲染器
+    // 设置渲染器尺寸和像素比
     this.renderer.setSize(this.width, this.height);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 0.8;
 
-    // 添加到容器
-    this.container.appendChild(this.renderer.domElement);
+    // 修复 THREE.js 新版本的颜色空间设置
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1;
+
+    // 确保添加到容器
+    if (this.container) {
+      this.container.appendChild(this.renderer.domElement);
+    }
+
+    // 添加调试信息
+    console.log(
+      "Renderer canvas size:",
+      this.renderer.domElement.width,
+      this.renderer.domElement.height
+    );
+    console.log(
+      "Container size:",
+      this.container.clientWidth,
+      this.container.clientHeight
+    );
   }
 
   getNebulaVertexShader() {
@@ -597,79 +731,118 @@ class SceneManager {
   }
 
   createStarfield() {
-    const starMaterial = new THREE.ShaderMaterial({
+    console.log("Creating starfield...");
+
+    const geometry = new THREE.BufferGeometry();
+    const vertices = [];
+    const colors = [];
+    const sizes = [];
+    const opacities = [];
+
+    // 增加星星数量
+    const starCount = 15000;
+
+    for (let i = 0; i < starCount; i++) {
+      // 使用球面分布来创建更自然的星空
+      const radius = Math.random() * 2000; // 增加分布范围
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(Math.random() * 2 - 1);
+
+      vertices.push(
+        radius * Math.sin(phi) * Math.cos(theta),
+        radius * Math.sin(phi) * Math.sin(theta),
+        radius * Math.cos(phi)
+      );
+
+      // 随机大小，但保持较小以模拟远处的星星
+      const size = THREE.MathUtils.randFloat(0.1, 3.0);
+      sizes.push(size);
+
+      // 随机不透明度，使一些星星更亮
+      const opacity = THREE.MathUtils.randFloat(0.1, 1.0);
+      opacities.push(opacity);
+
+      // 添加一些颜色变化
+      const colorChoice = Math.random();
+      if (colorChoice < 0.3) {
+        // 蓝白色星星
+        colors.push(0.8, 0.9, 1.0);
+      } else if (colorChoice < 0.6) {
+        // 纯白色星星
+        colors.push(1.0, 1.0, 1.0);
+      } else {
+        // 黄白色星星
+        colors.push(1.0, 0.9, 0.8);
+      }
+    }
+
+    // 设置属性
+    geometry.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute(vertices, 3)
+    );
+    geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+    geometry.setAttribute("size", new THREE.Float32BufferAttribute(sizes, 1));
+    geometry.setAttribute(
+      "opacity",
+      new THREE.Float32BufferAttribute(opacities, 1)
+    );
+
+    // 创建着色器材质
+    const material = new THREE.ShaderMaterial({
       uniforms: {
         time: { value: 0 },
-        baseColor: { value: config.starfield.colors.base },
-        highlightColor: { value: config.starfield.colors.highlight },
+        pixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
+        brightness: { value: 1.0 },
       },
       vertexShader: `
+        uniform float time;
+        uniform float pixelRatio;
         attribute float size;
         attribute vec3 color;
+        attribute float opacity;
         varying vec3 vColor;
-        uniform float time;
+        varying float vOpacity;
         
         void main() {
           vColor = color;
+          vOpacity = opacity;
+          
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = size * (300.0 / -mvPosition.z);
           gl_Position = projectionMatrix * mvPosition;
+          
+          // 添加闪烁效果
+          float scintillation = sin(time * 2.0 + position.x * 0.25 + position.y * 0.25) * 0.1 + 0.9;
+          gl_PointSize = size * pixelRatio * scintillation;
         }
       `,
       fragmentShader: `
         varying vec3 vColor;
-        uniform vec3 baseColor;
-        uniform vec3 highlightColor;
+        varying float vOpacity;
         
         void main() {
-          float dist = length(gl_PointCoord - vec2(0.5));
-          if (dist > 0.5) discard;
-          float intensity = 1.0 - dist * 2.0;
-          vec3 finalColor = mix(baseColor, highlightColor, intensity);
-          gl_FragColor = vec4(finalColor, intensity);
+          // 创建圆形点
+          vec2 center = gl_PointCoord - vec2(0.5);
+          float dist = length(center);
+          float alpha = smoothstep(0.5, 0.3, dist) * vOpacity;
+          
+          // 添加光晕效果
+          vec3 finalColor = vColor;
+          finalColor += vec3(0.2) * (1.0 - dist * 2.0);
+          
+          gl_FragColor = vec4(finalColor, alpha);
         }
       `,
       transparent: true,
-      blending: THREE.AdditiveBlending,
       depthWrite: false,
+      blending: THREE.AdditiveBlending,
     });
 
-    config.starfield.layers.forEach((layer) => {
-      const geometry = new THREE.BufferGeometry();
-      const positions = new Float32Array(layer.count * 3);
-      const sizes = new Float32Array(layer.count);
-      const colors = new Float32Array(layer.count * 3);
+    // 创建点云系统
+    this.starfield = new THREE.Points(geometry, material);
+    this.scene.add(this.starfield);
 
-      for (let i = 0; i < layer.count; i++) {
-        const theta = Math.random() * Math.PI * 2;
-        const phi = Math.acos(Math.random() * 2 - 1);
-        const r = layer.distance;
-
-        positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-        positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
-        positions[i * 3 + 2] = r * Math.cos(phi);
-
-        sizes[i] = THREE.MathUtils.randFloat(layer.size.min, layer.size.max);
-
-        const color =
-          config.starfield.colors.variants[
-            Math.floor(Math.random() * config.starfield.colors.variants.length)
-          ];
-        colors[i * 3] = color.r;
-        colors[i * 3 + 1] = color.g;
-        colors[i * 3 + 2] = color.b;
-      }
-
-      geometry.setAttribute(
-        "position",
-        new THREE.BufferAttribute(positions, 3)
-      );
-      geometry.setAttribute("size", new THREE.BufferAttribute(sizes, 1));
-      geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-
-      const stars = new THREE.Points(geometry, starMaterial.clone());
-      this.scene.add(stars);
-    });
+    console.log("Starfield created with", starCount, "stars");
   }
 
   initializeMeteors() {
