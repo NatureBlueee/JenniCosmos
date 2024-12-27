@@ -316,6 +316,13 @@ class SceneManager {
         opacity: { min: 0.1, max: 0.2 },
       },
     };
+
+    this.initializeCosmicEffects = () => {
+      // 只保留需要的效果初始化
+      this.createStarfield();
+      this.createStarClusters();
+      // 移除 createVolumetricLight 相关调用
+    };
   }
 
   // 添加 animate 方法
@@ -401,15 +408,6 @@ class SceneManager {
       this.nebulae.forEach((nebula) => {
         if (nebula.material.uniforms.time) {
           nebula.material.uniforms.time.value += deltaTime;
-        }
-      });
-    }
-
-    // 更新体积光
-    if (this.volumetricLights) {
-      this.volumetricLights.forEach((light) => {
-        if (light.material.uniforms.time) {
-          light.material.uniforms.time.value += deltaTime;
         }
       });
     }
@@ -614,29 +612,6 @@ class SceneManager {
       this.nebulae.push(nebula);
       this.scene.add(nebula);
     }
-
-    // 创建体积光
-    this.volumetricLights = [];
-    const lightConfig = this.cosmicConfig.volumetricLight;
-
-    for (let i = 0; i < lightConfig.count; i++) {
-      const size = THREE.MathUtils.randFloat(
-        lightConfig.minSize,
-        lightConfig.maxSize
-      );
-      const intensity = THREE.MathUtils.randFloat(
-        lightConfig.minIntensity,
-        lightConfig.maxIntensity
-      );
-      const color =
-        lightConfig.colors[
-          Math.floor(Math.random() * lightConfig.colors.length)
-        ];
-
-      const light = this.createVolumetricLight(size, color, intensity);
-      this.volumetricLights.push(light);
-      this.scene.add(light);
-    }
   }
 
   createNebula(size, color, opacity) {
@@ -658,31 +633,9 @@ class SceneManager {
     return new THREE.Mesh(geometry, material);
   }
 
-  createVolumetricLight(size, color, intensity) {
-    const geometry = new THREE.PlaneGeometry(size, size);
-    const material = new THREE.ShaderMaterial({
-      uniforms: {
-        time: { value: 0 },
-        color: { value: color },
-        intensity: { value: intensity },
-      },
-      vertexShader: this.getVolumetricLightVertexShader(),
-      fragmentShader: this.getVolumetricLightFragmentShader(),
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-    });
-
-    return new THREE.Mesh(geometry, material);
-  }
-
   setupScene() {
-    // 创建场景
     this.scene = new THREE.Scene();
-
-    // 设置场景背景（使用更亮的颜色以便于调试）
-    this.scene.background = new THREE.Color(0x0a0a14);
+    this.scene.background = this.config.scene.background;
 
     // 创建容器
     this.container = document.getElementById("scene-container");
@@ -876,45 +829,6 @@ class SceneManager {
         float noise2 = noise(uv * 2.0 - time * 0.2);
         alpha *= mix(noise1, noise2, 0.5) + 0.5;
         
-        gl_FragColor = vec4(color, alpha);
-      }
-    `;
-  }
-
-  getVolumetricLightVertexShader() {
-    return `
-      varying vec2 vUv;
-      void main() {
-        vUv = uv;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }
-    `;
-  }
-
-  getVolumetricLightFragmentShader() {
-    return `
-      uniform vec3 color;
-      uniform float intensity;
-      uniform float time;
-      varying vec2 vUv;
-      
-      void main() {
-        vec2 uv = vUv * 2.0 - 1.0;
-        float dist = length(uv);
-        
-        // 创建光束效果
-        float beam = smoothstep(1.0, 0.0, dist) * intensity;
-        beam *= (1.0 + sin(time * 0.5)) * 0.5; // 添加脉冲效果
-        
-        // 添加光芒
-        float rays = 0.0;
-        for(float i = 0.0; i < 6.0; i++) {
-          float angle = i * 3.14159 * 2.0 / 6.0;
-          vec2 dir = vec2(cos(angle), sin(angle));
-          rays += smoothstep(0.3, 0.0, abs(dot(normalize(uv), dir)));
-        }
-        
-        float alpha = (beam + rays * 0.3) * intensity;
         gl_FragColor = vec4(color, alpha);
       }
     `;
