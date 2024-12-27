@@ -27,48 +27,6 @@
     <!-- GSAP -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     
-    <!-- 星空着色器 -->
-    <script type="x-shader/x-vertex" id="star-vertex">
-        uniform float time;
-        uniform float pixelRatio;
-        uniform float brightness;
-        
-        attribute float size;
-        attribute vec3 color;
-        attribute float opacity;
-        
-        varying vec3 vColor;
-        varying float vOpacity;
-        varying float vBrightness;
-        
-        void main() {
-            vColor = color;
-            vOpacity = opacity;
-            vBrightness = brightness;
-            
-            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-            gl_Position = projectionMatrix * mvPosition;
-            
-            float pulse = sin(time * 2.0 + position.x * 0.01 + position.y * 0.01) * 0.1 + 0.9;
-            gl_PointSize = size * pixelRatio * pulse;
-        }
-    </script>
-    
-    <script type="x-shader/x-fragment" id="star-fragment">
-        varying vec3 vColor;
-        varying float vOpacity;
-        varying float vBrightness;
-        
-        void main() {
-            float distanceFromCenter = length(gl_PointCoord - vec2(0.5));
-            float alpha = (1.0 - smoothstep(0.45, 0.5, distanceFromCenter)) * vOpacity;
-            
-            if (alpha < 0.01) discard;
-            
-            gl_FragColor = vec4(vColor * vBrightness, alpha);
-        }
-    </script>
-
     <!-- 流星着色器 -->
     <script type="x-shader/x-vertex" id="meteor-vertex">
         uniform float time;

@@ -27,6 +27,8 @@ const config = {
         color: new THREE.Color(0xffffff),
         rotationSpeed: 0.02,
         opacity: { min: 0.4, max: 0.8 },
+        brightness: { min: 0.5, max: 1.0 },
+        pulseSpeed: { min: 0.5, max: 1.5 },
       },
       {
         count: 5000,
@@ -35,6 +37,8 @@ const config = {
         color: new THREE.Color(0xb0c4de),
         rotationSpeed: 0.015,
         opacity: { min: 0.3, max: 0.6 },
+        brightness: { min: 0.3, max: 0.7 },
+        pulseSpeed: { min: 0.3, max: 0.8 },
       },
       {
         count: 8000,
@@ -43,6 +47,8 @@ const config = {
         color: new THREE.Color(0x87ceeb),
         rotationSpeed: 0.01,
         opacity: { min: 0.2, max: 0.5 },
+        brightness: { min: 0.6, max: 1.0 },
+        pulseSpeed: { min: 0.8, max: 1.2 },
       },
     ],
     colors: {
@@ -53,6 +59,19 @@ const config = {
         new THREE.Color(0xff69b4), // 粉红
         new THREE.Color(0x32cd32), // 青绿
       ],
+    },
+    starburst: {
+      enabled: true,
+      rays: 6,
+      scale: { min: 1.2, max: 2.0 },
+      intensity: { min: 0.3, max: 0.7 },
+    },
+    clusters: {
+      count: 6,
+      size: { min: 100, max: 300 },
+      density: { min: 50, max: 200 },
+      color: new THREE.Color(0xe6e6fa),
+      opacity: { min: 0.2, max: 0.4 },
     },
   },
   meteor: {
@@ -65,6 +84,27 @@ const config = {
     trailColor: new THREE.Color(0x4169e1).multiplyScalar(0.6),
     trailLength: 0.75,
     spawnInterval: { min: 4, max: 8 },
+  },
+  nebula: {
+    count: 1,
+    size: {
+      min: 300,
+      max: 400,
+    },
+    colors: [
+      new THREE.Color(0x3366ff).multiplyScalar(0.5), // 蓝色
+      new THREE.Color(0xff6633).multiplyScalar(0.3), // 橙色
+      new THREE.Color(0x9933ff).multiplyScalar(0.4), // 紫色
+      new THREE.Color(0x33ff99).multiplyScalar(0.3), // 青色
+    ],
+    opacity: {
+      min: 0.2,
+      max: 0.4,
+    },
+    animation: {
+      speed: 0.05,
+      turbulence: 0.3,
+    },
   },
 };
 
@@ -137,14 +177,7 @@ class Meteor {
 
 // 2. 然后定义 MeteorSystem 类
 class MeteorSystem {
-  constructor(scene, config) {
-    this.scene = scene;
-    this.config = config;
-    this.meteors = [];
-    this.lastSpawnTime = Date.now();
-    this.nextSpawnInterval = this.getRandomInterval();
-    this.isActive = true;
-  }
+  constructor(scene, config) {}
 
   getRandomInterval() {
     const { min, max } = this.config.meteor.spawnInterval;
@@ -257,121 +290,12 @@ class SceneManager {
     // 开始动画循环
     this.animate();
 
-    // 扩展星空配置
-    this.starfieldConfig = {
-      // 基础星星
-      stars: {
-        count: 15000,
-        layers: [
-          {
-            count: 5000,
-            size: { min: 0.1, max: 0.3 },
-            color: new THREE.Color(0xffffff),
-            distance: { min: 800, max: 1200 },
-            brightness: { min: 0.5, max: 1.0 },
-            pulseSpeed: { min: 0.5, max: 1.5 },
-          },
-          {
-            count: 7000,
-            size: { min: 0.05, max: 0.15 },
-            color: new THREE.Color(0xb0c4de),
-            distance: { min: 1200, max: 1800 },
-            brightness: { min: 0.3, max: 0.7 },
-            pulseSpeed: { min: 0.3, max: 0.8 },
-          },
-          {
-            count: 3000,
-            size: { min: 0.15, max: 0.4 },
-            color: new THREE.Color(0xffd700),
-            distance: { min: 600, max: 1000 },
-            brightness: { min: 0.6, max: 1.0 },
-            pulseSpeed: { min: 0.8, max: 1.2 },
-          },
-        ],
-        // 星芒效果
-        starburst: {
-          enabled: true,
-          rays: 6,
-          scale: { min: 1.2, max: 2.0 },
-          intensity: { min: 0.3, max: 0.7 },
-        },
-      },
-      // 星团
-      clusters: {
-        count: 5,
-        size: { min: 100, max: 300 },
-        density: { min: 50, max: 200 },
-        color: new THREE.Color(0xe6e6fa),
-        opacity: { min: 0.2, max: 0.4 },
-      },
-      // 星云
-      nebulae: {
-        count: 3,
-        size: { min: 500, max: 1000 },
-        colors: [
-          new THREE.Color(0x4b0082).multiplyScalar(0.3), // 深紫色
-          new THREE.Color(0x800080).multiplyScalar(0.2), // 紫色
-          new THREE.Color(0x4169e1).multiplyScalar(0.25), // 蓝色
-        ],
-        opacity: { min: 0.1, max: 0.2 },
-      },
-    };
-
     this.initializeCosmicEffects = () => {
       // 只保留需要的效果初始化
       this.createStarfield();
       this.createStarClusters();
       // 添加魔法粒子初始化
       this.createMagicalParticles();
-    };
-
-    // 扩展星云配置
-    this.nebulaConfig = {
-      count: 5,
-      size: {
-        min: 800,
-        max: 1500,
-      },
-      colors: [
-        new THREE.Color(0x3366ff).multiplyScalar(0.5), // 蓝色星云
-        new THREE.Color(0xff6633).multiplyScalar(0.3), // 橙色星云
-        new THREE.Color(0x9933ff).multiplyScalar(0.4), // 紫色星云
-        new THREE.Color(0x33ff99).multiplyScalar(0.3), // 青色星云
-      ],
-      opacity: {
-        min: 0.2,
-        max: 0.4,
-      },
-      animation: {
-        speed: 0.05,
-        turbulence: 0.3,
-      },
-    };
-
-    // 添加新的星云细节配置
-    this.nebulaEnhancement = {
-      dustClouds: {
-        count: 8,
-        size: { min: 200, max: 400 },
-        opacity: { min: 0.1, max: 0.2 },
-      },
-      colorVariation: {
-        primary: [
-          new THREE.Color(0x3366ff).multiplyScalar(0.5), // 蓝色
-          new THREE.Color(0xff6633).multiplyScalar(0.3), // 橙色
-          new THREE.Color(0x9933ff).multiplyScalar(0.4), // 紫色
-        ],
-        secondary: [
-          new THREE.Color(0x33ff99).multiplyScalar(0.3), // 青色
-          new THREE.Color(0xff3366).multiplyScalar(0.2), // 粉色
-          new THREE.Color(0xffff33).multiplyScalar(0.2), // 黄色
-        ],
-      },
-      animation: {
-        rotationSpeed: 0.02,
-        pulseSpeed: 0.1,
-        turbulence: 0.15,
-      },
     };
 
     // 添加魔法粒子配置
@@ -403,6 +327,117 @@ class SceneManager {
     // 在所有初始化完成后，添加进度面板
     this.initProgressPanel();
     console.log("Progress panel initialized");
+
+    // 添加参数存储
+    this.currentNebulaParams = null;
+    this.savedNebulaParams = null;
+
+    // 添加键盘事件监听
+    this.initializeKeyboardControls();
+  }
+
+  // 添加键盘控制
+  initializeKeyboardControls() {
+    document.addEventListener("keydown", (e) => {
+      // 按 S 键保存当前参数
+      if (e.key === "s" || e.key === "S") {
+        this.saveCurrentParams();
+      }
+      // 按 L 键加载上次保存的参数
+      if (e.key === "l" || e.key === "L") {
+        this.loadSavedParams();
+      }
+      // 按 R 键重新随机生成
+      if (e.key === "r" || e.key === "R") {
+        this.regenerateWithRandomParams();
+      }
+    });
+  }
+
+  // 生成随机参数
+  generateRandomParams() {
+    return {
+      nebulae: this.nebulae.map((nebula) => ({
+        size: nebula.scale.x,
+        color: nebula.material.uniforms.color.value.getHex(),
+        opacity: nebula.material.uniforms.opacity.value,
+        position: {
+          x: nebula.position.x,
+          y: nebula.position.y,
+          z: nebula.position.z,
+        },
+        rotation: nebula.rotation.z,
+        // 保存着色器中的随机种子
+        seed: Math.random() * 10000,
+      })),
+      starfield: {
+        count: this.cosmicConfig.starfield.stars.count,
+        colors: this.starfield.geometry.attributes.color.array.slice(),
+        positions: this.starfield.geometry.attributes.position.array.slice(),
+        sizes: this.starfield.geometry.attributes.size.array.slice(),
+      },
+    };
+  }
+
+  // 保存当前参数
+  saveCurrentParams() {
+    const params = this.generateRandomParams();
+    this.savedNebulaParams = params; // 保存在内存中
+
+    // 格式化输出到控制台
+    console.log("✨ 当前场景参数：");
+    console.log(JSON.stringify(params, null, 2));
+  }
+
+  // 加载保存的参数
+  loadSavedParams() {
+    if (this.savedNebulaParams) {
+      this.applyParams(this.savedNebulaParams);
+      console.log("✨ 场景已恢复");
+    } else {
+      console.log("⚠️ 没有保存的场景");
+    }
+  }
+
+  // 应用参数
+  applyParams(params) {
+    // 应用星云参数
+    params.nebulae.forEach((nebulaParams, i) => {
+      if (this.nebulae[i]) {
+        const nebula = this.nebulae[i];
+        nebula.scale.setScalar(nebulaParams.size);
+        nebula.material.uniforms.color.value.setHex(nebulaParams.color);
+        nebula.material.uniforms.opacity.value = nebulaParams.opacity;
+        nebula.position.set(
+          nebulaParams.position.x,
+          nebulaParams.position.y,
+          nebulaParams.position.z
+        );
+        nebula.rotation.z = nebulaParams.rotation;
+
+        // 更新着色器中的随机种子
+        if (nebula.material.uniforms.seed) {
+          nebula.material.uniforms.seed.value = nebulaParams.seed;
+        }
+      }
+    });
+
+    // 应用星空参数
+    if (params.starfield && this.starfield) {
+      const geometry = this.starfield.geometry;
+      geometry.attributes.color.array.set(params.starfield.colors);
+      geometry.attributes.position.array.set(params.starfield.positions);
+      geometry.attributes.size.array.set(params.starfield.sizes);
+      geometry.attributes.color.needsUpdate = true;
+      geometry.attributes.position.needsUpdate = true;
+      geometry.attributes.size.needsUpdate = true;
+    }
+  }
+
+  // 重新生成随机效果
+  regenerateWithRandomParams() {
+    this.initializeCosmicEffects();
+    console.log("✨ 已重新生成");
   }
 
   // 添加进度面板初始化方法
@@ -767,25 +802,11 @@ class SceneManager {
     );
     this.animationState.lastUpdateTime = currentTime;
 
-    // 更新性能统计
-    this.updatePerformanceStats(deltaTime);
-
     // 更新场景
     this.updateScene(deltaTime);
 
     // 确保在渲染前检查必要组件
     if (this.scene && this.camera && this.renderer) {
-      // 添加调试信息
-      if (this.debug.logUpdates && this.stats.frames % 300 === 0) {
-        console.log("Rendering frame with:", {
-          cameraPosition: this.camera.position.toArray(),
-          sceneChildren: this.scene.children.map((child) => ({
-            type: child.type,
-            position: child.position.toArray(),
-          })),
-        });
-      }
-
       this.renderer.render(this.scene, this.camera);
     }
 
@@ -795,42 +816,8 @@ class SceneManager {
     requestAnimationFrame(this.animate.bind(this));
   }
 
-  updatePerformanceStats(deltaTime) {
-    // 添加调试输出
-    if (this.debug.logUpdates && this.stats.frames % 60 === 0) {
-      console.log({
-        fps: this.stats.fps,
-        frameTime: this.stats.frameTime,
-        objects: this.scene ? this.scene.children.length : 0,
-        drawCalls: this.renderer ? this.renderer.info.render.calls : 0,
-      });
-    }
-
-    if (!this.stats || !this.debug) return;
-
-    // 更新FPS计数
-    this.stats.frames++;
-    const timeSinceLastUpdate = performance.now() - this.stats.lastUpdate;
-
-    if (timeSinceLastUpdate >= this.stats.updateInterval) {
-      this.stats.fps = (this.stats.frames * 1000) / timeSinceLastUpdate;
-      this.stats.frameTime = timeSinceLastUpdate / this.stats.frames;
-      this.stats.frames = 0;
-      this.stats.lastUpdate = performance.now();
-
-      // 更新性能面板（如果存在）
-      if (this.debug.showPerformance) {
-        this.updatePerformancePanel();
-      }
-    }
-  }
-
   updateScene(deltaTime) {
-    // 添加错误检查
-    if (!this.scene || !this.config) {
-      console.warn("Scene or config not initialized");
-      return;
-    }
+    if (!this.scene || !this.config) return;
 
     // 更新流星系统
     if (this.meteorSystem) {
@@ -963,12 +950,74 @@ class SceneManager {
   }
 
   initializeConfigs() {
-    // 宇宙效果配置 - 使用现有的配置结构
+    this.config = {
+      scene: {
+        camera: {
+          fov: 60,
+          near: 0.1,
+          far: 3000,
+          position: { x: 0, y: 0, z: 1500 },
+          movement: {
+            rotationSpeed: 0.3,
+            positionSpeed: 0.4,
+            zoomSpeed: 0.5,
+            autoRotate: true,
+            autoRotateSpeed: 0.01,
+          },
+        },
+        background: new THREE.Color(0x000814),
+      },
+    };
+
     this.cosmicConfig = {
+      starfield: {
+        stars: {
+          count: 15000,
+          layers: [
+            {
+              count: 5000,
+              size: { min: 0.1, max: 0.3 },
+              color: new THREE.Color(0xffffff),
+              distance: { min: 800, max: 1200 },
+              brightness: { min: 0.5, max: 1.0 },
+              pulseSpeed: { min: 0.5, max: 1.5 },
+            },
+            {
+              count: 7000,
+              size: { min: 0.05, max: 0.15 },
+              color: new THREE.Color(0xb0c4de),
+              distance: { min: 1200, max: 1800 },
+              brightness: { min: 0.3, max: 0.7 },
+              pulseSpeed: { min: 0.3, max: 0.8 },
+            },
+            {
+              count: 3000,
+              size: { min: 0.15, max: 0.4 },
+              color: new THREE.Color(0xffd700),
+              distance: { min: 600, max: 1000 },
+              brightness: { min: 0.6, max: 1.0 },
+              pulseSpeed: { min: 0.8, max: 1.2 },
+            },
+          ],
+          starburst: {
+            enabled: true,
+            rays: 6,
+            scale: { min: 1.2, max: 2.0 },
+            intensity: { min: 0.3, max: 0.7 },
+          },
+        },
+        clusters: {
+          count: 6,
+          size: { min: 100, max: 300 },
+          density: { min: 50, max: 200 },
+          color: new THREE.Color(0xe6e6fa),
+          opacity: { min: 0.2, max: 0.4 },
+        },
+      },
       nebulae: {
         count: 12,
-        minRadius: 800,
-        maxRadius: 2000,
+        minRadius: 1500,
+        maxRadius: 4000,
         minOpacity: 0.2,
         maxOpacity: 0.4,
         colors: [
@@ -976,7 +1025,37 @@ class SceneManager {
           new THREE.Color(0xff6633).multiplyScalar(0.3),
           new THREE.Color(0x9933ff).multiplyScalar(0.4),
           new THREE.Color(0x33ff99).multiplyScalar(0.3),
+          new THREE.Color(0xff3366).multiplyScalar(0.2),
+          new THREE.Color(0xffff33).multiplyScalar(0.2),
         ],
+        dustClouds: {
+          count: 8,
+          size: {
+            min: 3000,
+            max: 4000,
+          },
+          opacity: { min: 0.1, max: 0.2 },
+        },
+        animation: {
+          rotationSpeed: 0.0001,
+          colorTransitionSpeed: 0.001,
+          pulseSpeed: 0.5,
+          turbulence: 0.15,
+        },
+        ambient: {
+          nebulae: [
+            {
+              color: new THREE.Color(0x4b0082).multiplyScalar(0.3),
+              size: 2000,
+              opacity: 0.15,
+            },
+            {
+              color: new THREE.Color(0x800080).multiplyScalar(0.2),
+              size: 2500,
+              opacity: 0.12,
+            },
+          ],
+        },
       },
       volumetricLight: {
         count: 8,
@@ -991,42 +1070,21 @@ class SceneManager {
         ],
       },
     };
-
-    // 入场动画配置
-    this.entranceAnimation = {
-      enabled: true,
-      duration: 8.0,
-      startPosition: new THREE.Vector3(0, -500, 4000),
-      targetPosition: new THREE.Vector3(0, 0, 2000),
-      easing: (t) => 1 - Math.pow(1 - t, 3),
-      progress: 0,
-    };
-
-    const ambientConfig = {
-      nebulae: [
-        {
-          color: new THREE.Color(0x4b0082).multiplyScalar(0.3),
-          size: 2000,
-          opacity: 0.15,
-        },
-        {
-          color: new THREE.Color(0x800080).multiplyScalar(0.2),
-          size: 2500,
-          opacity: 0.12,
-        },
-      ],
-      volumetricLight: {
-        intensity: 0.08,
-        decay: 2.0,
-        density: 0.15,
-      },
-    };
   }
 
   initializeCosmicEffects() {
-    // 创建星云
     this.nebulae = [];
     const nebulaConfig = this.cosmicConfig.nebulae;
+
+    // 新的星云颜色组合 - 偏玫瑰星云的色调
+    const nebulaColors = [
+      new THREE.Color(0xff69b4).multiplyScalar(0.4), // 粉红色
+      new THREE.Color(0xe6e6fa).multiplyScalar(0.5), // 淡紫色
+      new THREE.Color(0xdda0dd).multiplyScalar(0.4), // 梅红色
+      new THREE.Color(0xff1493).multiplyScalar(0.3), // 深粉色
+      new THREE.Color(0xdb7093).multiplyScalar(0.4), // 淡紫红
+      new THREE.Color(0xffc0cb).multiplyScalar(0.5), // 粉色
+    ];
 
     for (let i = 0; i < nebulaConfig.count; i++) {
       const size = THREE.MathUtils.randFloat(
@@ -1034,42 +1092,39 @@ class SceneManager {
         nebulaConfig.maxRadius
       );
       const opacity = THREE.MathUtils.randFloat(
-        nebulaConfig.minOpacity,
-        nebulaConfig.maxOpacity
+        nebulaConfig.minOpacity * 1.2,
+        nebulaConfig.maxOpacity * 1.2
       );
       const color =
-        nebulaConfig.colors[
-          Math.floor(Math.random() * nebulaConfig.colors.length)
-        ];
+        nebulaColors[Math.floor(Math.random() * nebulaColors.length)];
 
       const nebula = this.createNebula(size, color, opacity);
+
+      // 随机旋转星云
+      nebula.rotation.z = Math.random() * Math.PI * 2;
+
       this.nebulae.push(nebula);
       this.scene.add(nebula);
     }
   }
 
   createNebula(size, color, opacity) {
-    const geometry = new THREE.PlaneGeometry(size, size, 64, 64); // 增加细分
+    const geometry = new THREE.PlaneGeometry(size, size * 1.6, 64, 64);
     const material = new THREE.ShaderMaterial({
       uniforms: {
         time: { value: 0 },
-        color: { value: color },
-        opacity: { value: opacity },
+        color: { value: new THREE.Color(color) },
+        opacity: { value: opacity * 1.3 }, // 略微增加整体不透明度
       },
       vertexShader: this.getNebulaVertexShader(),
       fragmentShader: this.getNebulaFragmentShader(),
       transparent: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
-      side: THREE.DoubleSide,
     });
 
     const nebula = new THREE.Mesh(geometry, material);
-
-    // 添加随机旋转
-    nebula.rotation.x = Math.random() * Math.PI;
-    nebula.rotation.y = Math.random() * Math.PI;
-    nebula.rotation.z = Math.random() * Math.PI;
+    nebula.rotation.z = Math.PI * 0.1;
 
     return nebula;
   }
@@ -1261,106 +1316,94 @@ class SceneManager {
       varying vec2 vUv;
       varying vec3 vPosition;
       
-      // 改进的柏林噪声实现
-      vec3 mod289(vec3 x) {
-        return x - floor(x * (1.0 / 289.0)) * 289.0;
+      // 优化的噪声函数
+      float hash(float n) {
+        return fract(sin(n) * 43758.5453123);
       }
       
-      vec4 mod289(vec4 x) {
-        return x - floor(x * (1.0 / 289.0)) * 289.0;
+      float noise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);
+        float n = i.x + i.y * 157.0;
+        return mix(
+          mix(hash(n), hash(n + 1.0), f.x),
+          mix(hash(n + 157.0), hash(n + 158.0), f.x),
+          f.y
+        );
       }
       
-      vec4 permute(vec4 x) {
-        return mod289(((x * 34.0) + 1.0) * x);
-      }
-      
-      vec4 taylorInvSqrt(vec4 r) {
-        return 1.79284291400159 - 0.85373472095314 * r;
-      }
-      
-      float snoise(vec3 v) {
-        const vec2 C = vec2(1.0/6.0, 1.0/3.0);
-        const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+      float fbm(vec2 p, float speed) {
+        float sum = 0.0;
+        float amp = 0.5;
+        float freq = 1.0;
+        vec2 shift = vec2(time * speed);
         
-        vec3 i  = floor(v + dot(v, C.yyy));
-        vec3 x0 = v - i + dot(i, C.xxx);
-        
-        vec3 g = step(x0.yzx, x0.xyz);
-        vec3 l = 1.0 - g;
-        vec3 i1 = min(g.xyz, l.zxy);
-        vec3 i2 = max(g.xyz, l.zxy);
-        
-        vec3 x1 = x0 - i1 + C.xxx;
-        vec3 x2 = x0 - i2 + C.yyy;
-        vec3 x3 = x0 - D.yyy;
-        
-        i = mod289(i);
-        vec4 p = permute(permute(permute(
-          i.z + vec4(0.0, i1.z, i2.z, 1.0))
-          + i.y + vec4(0.0, i1.y, i2.y, 1.0))
-          + i.x + vec4(0.0, i1.x, i2.x, 1.0));
-          
-        float n_ = 0.142857142857;
-        vec3 ns = n_ * D.wyz - D.xzx;
-        
-        vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
-        
-        vec4 x_ = floor(j * ns.z);
-        vec4 y_ = floor(j - 7.0 * x_);
-        
-        vec4 x = x_ *ns.x + ns.yyyy;
-        vec4 y = y_ *ns.x + ns.yyyy;
-        vec4 h = 1.0 - abs(x) - abs(y);
-        
-        vec4 b0 = vec4(x.xy, y.xy);
-        vec4 b1 = vec4(x.zw, y.zw);
-        
-        vec4 s0 = floor(b0)*2.0 + 1.0;
-        vec4 s1 = floor(b1)*2.0 + 1.0;
-        vec4 sh = -step(h, vec4(0.0));
-        
-        vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy;
-        vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
-        
-        vec3 p0 = vec3(a0.xy, h.x);
-        vec3 p1 = vec3(a0.zw, h.y);
-        vec3 p2 = vec3(a1.xy, h.z);
-        vec3 p3 = vec3(a1.zw, h.w);
-        
-        vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
-        p0 *= norm.x;
-        p1 *= norm.y;
-        p2 *= norm.z;
-        p3 *= norm.w;
-        
-        vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
-        m = m * m;
-        return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
+        for(int i = 0; i < 3; i++) {
+          sum += noise(p * freq + shift) * amp;
+          freq *= 2.0;
+          amp *= 0.5;
+          shift *= 1.3;
+        }
+        return sum;
       }
       
       void main() {
         vec2 uv = vUv * 2.0 - 1.0;
-        float dist = length(uv);
+        float angle = -0.2;
+        vec2 rotatedUV = vec2(
+          uv.x * cos(angle) - uv.y * sin(angle),
+          uv.x * sin(angle) + uv.y * cos(angle)
+        );
         
-        // 使用改进的噪声创建更自然的星云形态
-        float noise1 = snoise(vec3(vPosition.xy * 0.02, time * 0.1));
-        float noise2 = snoise(vec3(vPosition.yx * 0.04, time * 0.15 + 100.0));
-        float noise3 = snoise(vec3(vPosition.xy * 0.01, time * 0.05 - 100.0));
+        // 创建多层结构
+        // 1. 深层暗云
+        float darkCloud = fbm(rotatedUV * 1.5 - time * 0.02, 0.05);
         
-        // 组合多层噪声
-        float combinedNoise = noise1 * 0.5 + noise2 * 0.3 + noise3 * 0.2;
+        // 2. 主要气态结构
+        float mainStructure = fbm(rotatedUV * 2.0 + time * 0.05, 0.1);
+        float pillar = smoothstep(0.3, -0.3, 
+          abs(rotatedUV.x + sin(rotatedUV.y * 2.0) * 0.15) - 
+          0.2 + mainStructure * 0.3
+        );
+        pillar *= smoothstep(-1.0, -0.5, rotatedUV.y) * 
+                  smoothstep(1.2, -0.2, rotatedUV.y);
         
-        // 创建星云的基础形状
-        float alpha = smoothstep(1.0, 0.0, dist) * opacity;
+        // 3. 明亮的电离区
+        float brightRegion = fbm(rotatedUV * 3.0 + time * 0.1, 0.15);
+        float ionized = smoothstep(0.4, 0.0, 
+          length(rotatedUV - vec2(0.0, 0.3)) - 0.3 + brightRegion * 0.2
+        );
         
-        // 添加动态扭曲效果
-        alpha *= 1.0 + combinedNoise * 0.5;
+        // 4. 细小的丝状结构
+        float filaments = fbm(rotatedUV * 4.0 + time * 0.08, 0.12);
         
-        // 添加颜色变化
-        vec3 finalColor = color + combinedNoise * 0.2;
+        // 组合所有层次
+        float structure = pillar;
+        structure = mix(structure, structure * (1.0 + darkCloud), 0.5);
+        structure = max(structure, ionized * 0.7);
+        structure += filaments * 0.15 * structure;
         
-        // 边缘渐变
-        alpha *= smoothstep(1.0, 0.2, dist);
+        // 密度变化
+        float density = fbm(rotatedUV * 2.5 - time * 0.03, 0.07);
+        structure *= mix(0.6, 1.0, density);
+        
+        // 边缘处理
+        float edge = smoothstep(1.2, 0.0, length(rotatedUV));
+        float alpha = structure * edge * opacity;
+        
+        // 颜色变化
+        vec3 finalColor = color;
+        // 添加深度色彩变化
+        finalColor += vec3(
+          density * 0.1,
+          brightRegion * 0.15,
+          filaments * 0.05
+        );
+        
+        // 暗部处理
+        float darkness = smoothstep(0.2, 0.0, structure);
+        finalColor *= mix(1.0, 0.7, darkness);
         
         gl_FragColor = vec4(finalColor, alpha);
       }
@@ -1375,13 +1418,47 @@ class SceneManager {
     const colors = [];
     const sizes = [];
     const opacities = [];
+    const brightness = [];
+    const pulseSpeed = [];
+    const starburstScale = [];
 
-    // 增加星星数量
-    const starCount = 15000;
+    // 显著增加星星数量
+    const starCount = 35000;
 
     for (let i = 0; i < starCount; i++) {
-      // 使用球面分布来创建更自然的星空
-      const radius = Math.random() * 2000; // 增加分布范围
+      let radius, size, brightnessValue, pulseSpeedValue, starburstValue;
+
+      // 调整星星分布，使其更配合星云
+      if (i < starCount * 0.03) {
+        // 3% 超亮主星
+        radius = Math.random() * 1000; // 更近的距离
+        size = THREE.MathUtils.randFloat(2.5, 4.0);
+        brightnessValue = THREE.MathUtils.randFloat(0.9, 1.0);
+        pulseSpeedValue = THREE.MathUtils.randFloat(0.8, 1.2);
+        starburstValue = THREE.MathUtils.randFloat(2.0, 3.0);
+      } else if (i < starCount * 0.15) {
+        // 12% 明亮星星
+        radius = Math.random() * 1500;
+        size = THREE.MathUtils.randFloat(1.5, 2.5);
+        brightnessValue = THREE.MathUtils.randFloat(0.7, 0.9);
+        pulseSpeedValue = THREE.MathUtils.randFloat(0.6, 1.0);
+        starburstValue = THREE.MathUtils.randFloat(1.5, 2.0);
+      } else if (i < starCount * 0.4) {
+        // 25% 中等亮度星星
+        radius = Math.random() * 1800;
+        size = THREE.MathUtils.randFloat(0.8, 1.5);
+        brightnessValue = THREE.MathUtils.randFloat(0.5, 0.7);
+        pulseSpeedValue = THREE.MathUtils.randFloat(0.4, 0.8);
+        starburstValue = THREE.MathUtils.randFloat(1.0, 1.5);
+      } else {
+        // 60% 背景星星
+        radius = Math.random() * 2000;
+        size = THREE.MathUtils.randFloat(0.3, 0.8);
+        brightnessValue = THREE.MathUtils.randFloat(0.3, 0.5);
+        pulseSpeedValue = THREE.MathUtils.randFloat(0.2, 0.6);
+        starburstValue = THREE.MathUtils.randFloat(0.5, 1.0);
+      }
+
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(Math.random() * 2 - 1);
 
@@ -1391,26 +1468,34 @@ class SceneManager {
         radius * Math.cos(phi)
       );
 
-      // 随机大小，但保持较小以模拟远处的星星
-      const size = THREE.MathUtils.randFloat(0.1, 3.0);
       sizes.push(size);
 
-      // 随机不透明度，使一些星星更亮
+      // 随机不透明度
       const opacity = THREE.MathUtils.randFloat(0.1, 1.0);
       opacities.push(opacity);
 
-      // 添加一些颜色变化
+      // 更丰富的颜色变化
       const colorChoice = Math.random();
-      if (colorChoice < 0.3) {
-        // 蓝白色星星
-        colors.push(0.8, 0.9, 1.0);
+      if (colorChoice < 0.2) {
+        // 暖白色星星
+        colors.push(1.0, 0.98, 0.95);
+      } else if (colorChoice < 0.4) {
+        // 淡粉色星星
+        colors.push(1.0, 0.9, 0.95);
       } else if (colorChoice < 0.6) {
         // 纯白色星星
         colors.push(1.0, 1.0, 1.0);
+      } else if (colorChoice < 0.8) {
+        // 淡金色星星
+        colors.push(1.0, 0.95, 0.85);
       } else {
-        // 黄白色星星
-        colors.push(1.0, 0.9, 0.8);
+        // 淡蓝色星星（对比色）
+        colors.push(0.9, 0.95, 1.0);
       }
+
+      brightness.push(brightnessValue);
+      pulseSpeed.push(pulseSpeedValue);
+      starburstScale.push(starburstValue);
     }
 
     // 设置属性
@@ -1424,58 +1509,31 @@ class SceneManager {
       "opacity",
       new THREE.Float32BufferAttribute(opacities, 1)
     );
+    geometry.setAttribute(
+      "brightness",
+      new THREE.Float32BufferAttribute(brightness, 1)
+    );
+    geometry.setAttribute(
+      "pulseSpeed",
+      new THREE.Float32BufferAttribute(pulseSpeed, 1)
+    );
+    geometry.setAttribute(
+      "starburstScale",
+      new THREE.Float32BufferAttribute(starburstScale, 1)
+    );
 
-    // 创建着色器材质
     const material = new THREE.ShaderMaterial({
       uniforms: {
         time: { value: 0 },
         pixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
-        brightness: { value: 1.0 },
       },
-      vertexShader: `
-        uniform float time;
-        uniform float pixelRatio;
-        attribute float size;
-        attribute vec3 color;
-        attribute float opacity;
-        varying vec3 vColor;
-        varying float vOpacity;
-        
-        void main() {
-          vColor = color;
-          vOpacity = opacity;
-          
-          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-          gl_Position = projectionMatrix * mvPosition;
-          
-          // 添加闪烁效果
-          float scintillation = sin(time * 2.0 + position.x * 0.25 + position.y * 0.25) * 0.1 + 0.9;
-          gl_PointSize = size * pixelRatio * scintillation;
-        }
-      `,
-      fragmentShader: `
-        varying vec3 vColor;
-        varying float vOpacity;
-        
-        void main() {
-          // 创建圆形点
-          vec2 center = gl_PointCoord - vec2(0.5);
-          float dist = length(center);
-          float alpha = smoothstep(0.5, 0.3, dist) * vOpacity;
-          
-          // 添加光晕效果
-          vec3 finalColor = vColor;
-          finalColor += vec3(0.2) * (1.0 - dist * 2.0);
-          
-          gl_FragColor = vec4(finalColor, alpha);
-        }
-      `,
+      vertexShader: this.getStarVertexShader(),
+      fragmentShader: this.getStarFragmentShader(),
       transparent: true,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
     });
 
-    // 创建点云系统
     this.starfield = new THREE.Points(geometry, material);
     this.scene.add(this.starfield);
 
@@ -1689,15 +1747,15 @@ class SceneManager {
       void main() {
         vColor = color;
         
-        // 计算脉冲效果
-        float pulse = sin(time * pulseSpeed) * 0.1 + 0.9;
+        // 减小脉冲效果
+        float pulse = sin(time * pulseSpeed) * 0.15 + 0.85;
         vBrightness = brightness * pulse;
         vStarburstScale = starburstScale;
         
         vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
         gl_Position = projectionMatrix * mvPosition;
         
-        // 应用大小和脉冲
+        // 调整大小变化
         gl_PointSize = size * pixelRatio * pulse;
       }
     `;
@@ -1715,20 +1773,29 @@ class SceneManager {
         vec2 center = gl_PointCoord - vec2(0.5);
         float dist = length(center);
         
-        // 基础星星形状
-        float alpha = smoothstep(0.5, 0.3, dist);
+        // 更强的核心亮度
+        float core = smoothstep(0.5, 0.1, dist) * 1.5;
         
-        // 星芒效果
+        // 更大的光晕范围
+        float glow = exp(-1.5 * dist);  // 减小衰减系数
+        
+        // 更明显的星芒效果
         float rays = 0.0;
-        float numRays = 6.0;
+        float numRays = 4.0;
         for(float i = 0.0; i < numRays; i++) {
           float angle = i * 3.14159 * 2.0 / numRays;
           vec2 dir = vec2(cos(angle), sin(angle));
-          rays += smoothstep(0.3, 0.0, abs(dot(normalize(center), dir))) * 0.3;
+          float ray = pow(abs(dot(normalize(center), dir)), 12.0);  // 减小幂次，使光芒更明显
+          rays += ray * 0.25;  // 增加光芒强度
         }
         
-        // 组合效果
-        vec3 finalColor = vColor * (vBrightness + rays * vStarburstScale);
+        // 组合效果，增加整体亮度
+        float brightness = (core + glow * 0.5 + rays * vStarburstScale) * 1.2;
+        brightness *= vBrightness;
+        
+        vec3 finalColor = vColor * brightness;
+        float alpha = brightness * smoothstep(1.0, 0.0, dist);
+        
         gl_FragColor = vec4(finalColor, alpha);
       }
     `;
@@ -2009,6 +2076,44 @@ class SceneManager {
       if (dust.mesh.material.uniforms) {
         dust.mesh.material.uniforms.time.value = this.time;
       }
+    });
+  }
+
+  // 添加动画更新方法
+  updateNebulae(deltaTime) {
+    if (!this.nebulae) return;
+
+    this.nebulae.forEach((nebula, index) => {
+      if (!nebula.material || !nebula.material.uniforms) return;
+
+      // 更新时间
+      nebula.material.uniforms.time.value += deltaTime;
+
+      // 旋转
+      nebula.rotation.z +=
+        this.cosmicConfig.nebulae.animation.rotationSpeed * deltaTime;
+
+      // 颜色渐变
+      const colorIndex =
+        Math.floor(
+          nebula.material.uniforms.time.value *
+            this.cosmicConfig.nebulae.animation.colorTransitionSpeed
+        ) % this.cosmicConfig.nebulae.colors.length;
+      const nextColorIndex =
+        (colorIndex + 1) % this.cosmicConfig.nebulae.colors.length;
+
+      const currentColor = this.cosmicConfig.nebulae.colors[colorIndex];
+      const nextColor = this.cosmicConfig.nebulae.colors[nextColorIndex];
+      const t =
+        (nebula.material.uniforms.time.value *
+          this.cosmicConfig.nebulae.animation.colorTransitionSpeed) %
+        1;
+
+      nebula.material.uniforms.color.value.lerpColors(
+        currentColor,
+        nextColor,
+        t
+      );
     });
   }
 }
