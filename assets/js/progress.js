@@ -554,121 +554,307 @@ class SceneManager {
 
       .cosmic-journey {
         width: 100%;
-        max-width: 1200px;
-        padding: 2rem;
+        max-width: 1400px;
+        padding: 4rem 2rem;
+        position: relative;
       }
 
       .journey-path {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 2rem;
+        gap: 5rem 4rem;
+        transform-style: preserve-3d;
+        transform: perspective(2000px) rotateX(5deg) scale(0.95);
+        position: relative;
+      }
+
+      /* 添加星云轨迹背景 */
+      .journey-path::before {
+        content: '';
+        position: absolute;
+        inset: -20%;
+        background: 
+          radial-gradient(
+            circle at 30% 50%,
+            var(--glow-color) 0%,
+            transparent 60%
+          ),
+          radial-gradient(
+            circle at 70% 50%,
+            var(--color) 0%,
+            transparent 60%
+          );
+        opacity: 0.05;
+        filter: blur(40px);
+        z-index: -1;
+        animation: nebulaPulse 8s ease-in-out infinite;
       }
 
       .milestone-node {
         --delay: calc(var(--index) * 0.4s);
+        --offset: calc(var(--index) * 25px);
+        --rotation: calc(var(--index) * 3deg);
+        position: relative;
+        transform: 
+          translateY(calc(var(--offset))) 
+          rotate(var(--rotation))
+          translateZ(0);
         opacity: 0;
-        transform: translateY(30px);
-        animation: fadeSlideIn 0.8s ease forwards;
+        animation: fadeSlideIn 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
         animation-delay: var(--delay);
-        pointer-events: auto;
+      }
+
+      /* 更有创意的节点分布 */
+      .milestone-node:nth-child(3n + 1) {
+        transform: 
+          translateX(-15%) 
+          translateY(calc(var(--offset) - 20px)) 
+          rotate(calc(var(--rotation) * -1));
+      }
+
+      .milestone-node:nth-child(3n + 2) {
+        transform: 
+          translateY(calc(var(--offset) + 40px)) 
+          rotate(calc(var(--rotation) * 0.5));
+      }
+
+      .milestone-node:nth-child(3n) {
+        transform: 
+          translateX(15%) 
+          translateY(calc(var(--offset) + 20px)) 
+          rotate(var(--rotation));
+      }
+
+      /* 添加星际连接线 */
+      .milestone-node::before,
+      .milestone-node::after {
+        content: '';
+        position: absolute;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--color),
+          transparent
+        );
+        opacity: 0.2;
+        filter: blur(1px);
+      }
+
+      .milestone-node::before {
+        width: 200%;
+        height: 1px;
+        top: 50%;
+        left: -50%;
+        transform: rotate(calc(var(--rotation) * 2));
+      }
+
+      .milestone-node::after {
+        width: 1px;
+        height: 200%;
+        left: 50%;
+        top: -50%;
+        transform: rotate(calc(var(--rotation) * -2));
+      }
+
+      /* 星云脉动动画 */
+      @keyframes nebulaPulse {
+        0%, 100% { 
+          opacity: 0.05;
+          transform: scale(1);
+        }
+        50% { 
+          opacity: 0.08;
+          transform: scale(1.1);
+        }
+      }
+
+      /* 更自然的出现动画 */
+      @keyframes fadeSlideIn {
+        0% {
+          opacity: 0;
+          transform: 
+            translateY(calc(var(--offset) + 30px)) 
+            rotate(calc(var(--rotation) * 1.5))
+            scale(0.9);
+        }
+        100% {
+          opacity: 1;
+          transform: 
+            translateY(var(--offset)) 
+            rotate(var(--rotation))
+            scale(1);
+        }
+      }
+
+      /* 悬停效果增强 */
+      .cosmic-card:hover {
+        transform: 
+          translateZ(50px) 
+          rotate(calc(var(--rotation) * 1.2))
+          scale(1.05);
+      }
+
+      .cosmic-card:hover .card-glow {
+        opacity: 0.3;
+        transform: scale(1.8);
+      }
+
+      /* 添加流星轨迹效果 */
+      .progress-track::before {
+        content: '';
+        position: absolute;
+        top: -200%;
+        left: 0;
+        width: 100%;
+        height: 400%;
+        background: linear-gradient(
+          to bottom,
+          transparent,
+          var(--color),
+          transparent
+        );
+        opacity: 0.1;
+        transform: rotate(45deg);
+        animation: meteorTrail 3s linear infinite;
+        animation-delay: calc(var(--index) * -1s);
+      }
+
+      @keyframes meteorTrail {
+        from { transform: translateX(-100%) rotate(45deg); }
+        to { transform: translateX(200%) rotate(45deg); }
       }
 
       .cosmic-card {
         position: relative;
-        padding: 1.5rem;
-        background: rgba(0, 0, 0, 0.3);
+        padding: 2rem;
+        /* 恢复有机背景板效果 */
+        background: radial-gradient(
+          ellipse at var(--x, 50%) var(--y, 50%),
+          rgba(0, 0, 0, 0.4) 0%,
+          rgba(0, 0, 0, 0.7) 100%
+        );
         backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
-        overflow: hidden;
-        transition: all 0.5s ease;
+        transform-style: preserve-3d;
+        transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
       }
 
+      /* 确保卡片内容正确显示 */
+      .content-wrapper {
+        position: relative;
+        z-index: 2;
+      }
+
+      /* 增强卡片光晕效果 */
       .card-glow {
         position: absolute;
-        inset: 0;
+        inset: -50%;
         background: radial-gradient(
           circle at var(--x, 50%) var(--y, 50%),
           var(--glow-color) 0%,
           transparent 70%
         );
-        opacity: 0.5;
-        transition: opacity 0.3s ease;
+        opacity: 0.15;
+        mix-blend-mode: screen;
+        pointer-events: none;
+        transition: all 0.6s ease;
       }
 
-      .cosmic-card:hover .card-glow {
-        opacity: 1;
-      }
-
-      .content-wrapper {
+      /* 添加连接线容器 */
+      .journey-path {
         position: relative;
-        z-index: 1;
       }
 
-      .cosmic-icon {
-        font-size: 1.5rem;
-        color: var(--color);
-        text-shadow: 0 0 10px var(--glow-color);
+      /* 优化连接线效果 */
+      .milestone-node::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: -30%;
+        width: 60%;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--color),
+          transparent
+        );
+        opacity: 0.3;
+        transform-origin: left center;
+        transform: rotate(calc(var(--index) * 15deg));
+      }
+
+      .milestone-node::after {
+        content: '';
+        position: absolute;
+        top: -30%;
+        left: 50%;
+        width: 1px;
+        height: 60%;
+        background: linear-gradient(
+          180deg,
+          transparent,
+          var(--color),
+          transparent
+        );
+        opacity: 0.3;
+        transform-origin: center bottom;
+        transform: rotate(calc(var(--index) * -15deg));
       }
 
       .info h3 {
-        margin: 0.5rem 0;
-        color: white;
-        font-size: 1.2rem;
-        text-shadow: 0 0 15px var(--color);
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.25rem;
+        letter-spacing: 0.05em;
+        color: rgba(255, 255, 255, 0.95);
+        margin-bottom: 0.5rem;
+        /* 增强文字可读性 */
+        text-shadow: 
+          0 0 1px rgba(255, 255, 255, 0.9),
+          0 0 15px var(--color),
+          0 0 30px var(--glow-color);
       }
 
       .info p {
-        color: rgba(255, 255, 255, 0.7);
-        font-size: 0.9rem;
-        margin-bottom: 1rem;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.95rem;
+        line-height: 1.6;
+        color: rgba(255, 255, 255, 0.85);
+        /* 增强描述文字可读性 */
+        text-shadow: 
+          0 1px 2px rgba(0, 0, 0, 0.8),
+          0 0 15px rgba(0, 0, 0, 0.5);
       }
 
-      .progress-track {
-        height: 4px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 2px;
-        overflow: hidden;
-      }
-
-      .progress-fill {
-        height: 100%;
-        background: var(--color);
-        position: relative;
-        transition: width 1s ease;
-      }
-
-      .progress-stars {
+      /* 优化连接线样式 */
+      .connection-line {
         position: absolute;
+        height: 2px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--color) 50%,
+          transparent
+        );
+        opacity: 0.4;
+        filter: blur(1px);
+        pointer-events: none;
+        transform-origin: left center;
+        z-index: 1;
+      }
+
+      /* 添加发光效果 */
+      .connection-line::after {
+        content: '';
+        position: absolute;
+        top: -2px;
+        left: 0;
         right: 0;
-        top: 0;
-        height: 100%;
-        width: 20px;
-        background: linear-gradient(90deg, transparent, var(--color));
-        animation: starMove 1s linear infinite;
-      }
-
-      @keyframes fadeSlideIn {
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      @keyframes starMove {
-        from { transform: translateX(-100%); }
-        to { transform: translateX(100%); }
-      }
-
-      @media (max-width: 1024px) {
-        .journey-path {
-          grid-template-columns: repeat(2, 1fr);
-        }
-      }
-
-      @media (max-width: 640px) {
-        .journey-path {
-          grid-template-columns: 1fr;
-        }
+        bottom: -2px;
+        background: inherit;
+        filter: blur(4px);
+        opacity: 0.4;
       }
     `;
 
@@ -1735,7 +1921,7 @@ class SceneManager {
     document.body.appendChild(debugContainer);
   }
 
-  // 修改为3D流体效果计算
+  // 修�����为3D流体效果计算
   calculateFlowEffect(x, y, time) {
     const { flow } = this.noise;
     let amplitude = 1;
@@ -1768,7 +1954,7 @@ class SceneManager {
     return noiseValue;
   }
 
-  // 更新星星着色器
+  // 更��星星着色器
   getStarVertexShader() {
     return `
       uniform float time;
@@ -1859,7 +2045,7 @@ class SceneManager {
       depthWrite: false,
     });
 
-    // 为每个星团创建几何体和网格
+    // 为每个星团创建��何体��网格
     for (let i = 0; i < clusters.count; i++) {
       const size = THREE.MathUtils.randFloat(
         clusters.size.min,
@@ -2322,3 +2508,84 @@ document.addEventListener("DOMContentLoaded", () => {
   console.log("DOM loaded, initializing SceneManager...");
   const sceneManager = new SceneManager();
 });
+
+// 重写连接线创建函数，确保正确定位
+function createConnectionLines() {
+  // 清除现有的连接线
+  document
+    .querySelectorAll(".connection-line")
+    .forEach((line) => line.remove());
+
+  const nodes = document.querySelectorAll(".milestone-node");
+  const container = document.querySelector(".journey-path");
+
+  if (!container || nodes.length < 2) return;
+
+  nodes.forEach((node, i) => {
+    if (i < nodes.length - 1) {
+      const currentNode = node;
+      const nextNode = nodes[i + 1];
+
+      // 创建连接线
+      const line = document.createElement("div");
+      line.className = "connection-line";
+      container.appendChild(line);
+
+      // 获取节点位置
+      const rect1 = currentNode.getBoundingClientRect();
+      const rect2 = nextNode.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+
+      // 计算连接线起点和终点
+      const x1 = rect1.left + rect1.width / 2 - containerRect.left;
+      const y1 = rect1.top + rect1.height / 2 - containerRect.top;
+      const x2 = rect2.left + rect2.width / 2 - containerRect.left;
+      const y2 = rect2.top + rect2.height / 2 - containerRect.top;
+
+      // 计算连接线长度和角度
+      const length = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+      const angle = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
+
+      // 设置连接线样式
+      line.style.cssText = `
+        width: ${length}px;
+        left: ${x1}px;
+        top: ${y1}px;
+        transform: rotate(${angle}deg);
+        --color: ${getComputedStyle(currentNode).getPropertyValue("--color")};
+      `;
+
+      // 添加动画效果
+      line.style.animation = `glowPulse 2s ease-in-out infinite ${i * 0.2}s`;
+    }
+  });
+}
+
+// 添加动画效果
+style.textContent += `
+  @keyframes glowPulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.6; }
+  }
+`;
+
+// 确保在DOM加载完成和窗口调整时重新计算连接线
+document.addEventListener("DOMContentLoaded", () => {
+  createConnectionLines();
+
+  // 监听窗口调整，重新计算连接线
+  window.addEventListener("resize", debounce(createConnectionLines, 250));
+});
+
+// 防抖函数
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
