@@ -179,11 +179,25 @@ class MeteorSystem {
 class SceneManager {
   constructor() {
     // 保存全局配置
-    this.config = config; // 使用外部定义的 config
+    this.config = config;
+
+    // 初始化鼠标状态 - 移到最前面
+    this.mouseState = {
+      position: new THREE.Vector2(0, 0),
+      target: new THREE.Vector2(0, 0),
+      damping: 0.025,
+      sensitivity: {
+        rotation: 0.0002,
+        parallax: 0.05,
+      },
+    };
 
     // 首先初始化性能监控
     this.initializePerformanceMonitoring();
-    console.log("Initializing SceneManager...");
+    console.log("Performance monitoring initialized");
+
+    // 保存全局配置
+    this.config = config; // 使用外部定义的 config
 
     // 初始化配置
     this.initializeConfigs();
@@ -321,17 +335,11 @@ class SceneManager {
     }
 
     // 更新相机
-    if (this.camera && this.config.scene.camera.movement.autoRotate) {
-      this.camera.position.applyAxisAngle(
-        new THREE.Vector3(0, 1, 0),
-        this.config.scene.camera.movement.autoRotateSpeed
-      );
-      this.camera.lookAt(0, 0, 0);
-    }
+    this.updateCamera(deltaTime);
 
     // 更新星空
     if (this.starfield && this.starfield.material.uniforms) {
-      this.starfield.material.uniforms.time.value += deltaTime;
+      this.starfield.material.uniforms.time.value += deltaTime * 0.1; // 降低闪烁速度
     }
   }
 
@@ -602,22 +610,91 @@ class SceneManager {
   }
 
   setupCamera() {
-    // 创建相机
     this.camera = new THREE.PerspectiveCamera(
-      60, // FOV
+      60,
       this.width / this.height,
       0.1,
       3000
     );
 
-    // 设置相机位置
+    // 设置初始相机位置
     this.camera.position.set(0, 0, 1500);
     this.camera.lookAt(0, 0, 0);
 
-    // 添加调试信息
-    console.log("Camera position:", this.camera.position);
-    console.log("Camera FOV:", this.camera.fov);
-    console.log("Camera aspect:", this.camera.aspect);
+    // 初始化相机动画状态
+    this.cameraState = {
+      // 漂浮运动参数
+      drift: {
+        enabled: true,
+        speed: 0.02,
+        amplitude: {
+          x: 80,
+          y: 60,
+          z: 40,
+        },
+        time: 0,
+      },
+      // 视角转动参数
+      rotation: {
+        enabled: true,
+        speed: 0.00015, // 非常缓慢的旋转
+        time: 0,
+      },
+    };
+
+    console.log("Camera initialized with drift parameters:", this.cameraState);
+  }
+
+  updateCamera(deltaTime) {
+    if (!this.camera || !this.cameraState) return;
+
+    const { drift, rotation } = this.cameraState;
+
+    // 基础漂浮动画
+    if (drift.enabled) {
+      drift.time += deltaTime * drift.speed;
+
+      // 使用更柔和的正弦函数
+      const driftX = Math.sin(drift.time * 0.3) * drift.amplitude.x;
+      const driftY = Math.cos(drift.time * 0.2) * drift.amplitude.y;
+      const driftZ = Math.sin(drift.time * 0.15) * drift.amplitude.z;
+
+      // 减小鼠标影响
+      const mouseInfluenceX = this.mouseState.position.x * 150;
+      const mouseInfluenceY = this.mouseState.position.y * 150;
+
+      // 组合漂浮和鼠标效果
+      this.camera.position.x = driftX + mouseInfluenceX;
+      this.camera.position.y = driftY + mouseInfluenceY;
+      this.camera.position.z = 1500 + driftZ;
+
+      // 更柔和的注视点计算
+      const lookAtPoint = new THREE.Vector3(
+        mouseInfluenceX * 0.3,
+        mouseInfluenceY * 0.3,
+        0
+      );
+
+      // 添加更缓慢的旋转效果
+      if (rotation.enabled) {
+        rotation.time += deltaTime;
+        lookAtPoint.x += Math.sin(rotation.time * 0.08) * 40;
+        lookAtPoint.y += Math.cos(rotation.time * 0.08) * 40;
+      }
+
+      // 平滑地更新相机朝向
+      this.camera.lookAt(lookAtPoint);
+    }
+
+    // 更新鼠标位置（更强的阻尼效果）
+    this.mouseState.position.x +=
+      (this.mouseState.target.x - this.mouseState.position.x) *
+      this.mouseState.damping;
+    this.mouseState.position.y +=
+      (this.mouseState.target.y - this.mouseState.position.y) *
+      this.mouseState.damping;
+
+    this.camera.updateProjectionMatrix();
   }
 
   setupRenderer() {
@@ -873,6 +950,23 @@ class SceneManager {
     // 处理窗口大小变化
     window.addEventListener("resize", this.handleResize.bind(this));
 
+    // 添加鼠标移动事件
+    window.addEventListener("mousemove", this.handleMouseMove.bind(this));
+
+    // 添加触摸事件支持
+    window.addEventListener(
+      "touchmove",
+      (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        this.handleMouseMove({
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+        });
+      },
+      { passive: false }
+    );
+
     // 处理可见性变化
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) {
@@ -881,11 +975,6 @@ class SceneManager {
         this.resume();
       }
     });
-
-    // 性能监控相关
-    if (this.debug.showPerformance) {
-      this.setupPerformanceMonitoring();
-    }
 
     console.log("Event listeners bound");
   }
@@ -949,6 +1038,43 @@ class SceneManager {
         Draw Calls: ${this.renderer.info.render.calls}
       `;
     }, this.debug.logInterval);
+  }
+
+  handleMouseMove(event) {
+    if (!this.mouseState) return;
+
+    // 将鼠标位置归一化到 -1 到 1 的范围
+    this.mouseState.target.x = (event.clientX / window.innerWidth) * 2 - 1;
+    this.mouseState.target.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  }
+
+  // 添加调试方法
+  addDebugUI() {
+    if (!this.debug.enabled) return;
+
+    const debugContainer = document.createElement("div");
+    debugContainer.style.cssText = `
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 12px;
+      z-index: 1000;
+    `;
+
+    const updateDebug = () => {
+      debugContainer.textContent = `
+        Mouse: ${this.mouseState.position.x.toFixed(2)}, ${this.mouseState.position.y.toFixed(2)}
+        Camera: ${this.camera.position.x.toFixed(0)}, ${this.camera.position.y.toFixed(0)}, ${this.camera.position.z.toFixed(0)}
+        FPS: ${this.stats.fps.toFixed(1)}
+      `;
+    };
+
+    setInterval(updateDebug, 100);
+    document.body.appendChild(debugContainer);
   }
 }
 
