@@ -321,7 +321,8 @@ class SceneManager {
       // 只保留需要的效果初始化
       this.createStarfield();
       this.createStarClusters();
-      // 移除 createVolumetricLight 相关调用
+      // 添加魔法粒子初始化
+      this.createMagicalParticles();
     };
 
     // 扩展星云配置
@@ -346,6 +347,189 @@ class SceneManager {
         turbulence: 0.3,
       },
     };
+
+    // 添加新的星云细节配置
+    this.nebulaEnhancement = {
+      dustClouds: {
+        count: 8,
+        size: { min: 200, max: 400 },
+        opacity: { min: 0.1, max: 0.2 },
+      },
+      colorVariation: {
+        primary: [
+          new THREE.Color(0x3366ff).multiplyScalar(0.5), // 蓝色
+          new THREE.Color(0xff6633).multiplyScalar(0.3), // 橙色
+          new THREE.Color(0x9933ff).multiplyScalar(0.4), // 紫色
+        ],
+        secondary: [
+          new THREE.Color(0x33ff99).multiplyScalar(0.3), // 青色
+          new THREE.Color(0xff3366).multiplyScalar(0.2), // 粉色
+          new THREE.Color(0xffff33).multiplyScalar(0.2), // 黄色
+        ],
+      },
+      animation: {
+        rotationSpeed: 0.02,
+        pulseSpeed: 0.1,
+        turbulence: 0.15,
+      },
+    };
+
+    // 添加魔法粒子配置
+    this.magicalParticles = {
+      enabled: true,
+      particles: [],
+      config: {
+        count: 50,
+        colors: [
+          new THREE.Color(0xffd700).multiplyScalar(0.6), // 柔和的金色
+          new THREE.Color(0x9400d3).multiplyScalar(0.4), // 柔和的紫色
+          new THREE.Color(0x00ffff).multiplyScalar(0.5), // 柔和的青色
+        ],
+        size: {
+          min: 2,
+          max: 4,
+        },
+        speed: {
+          min: 0.2,
+          max: 0.5,
+        },
+        trail: {
+          length: 20,
+          opacity: 0.15,
+        },
+      },
+    };
+  }
+
+  // 新增魔法粒子创建方法
+  createMagicalParticles() {
+    const { config } = this.magicalParticles;
+    const geometry = new THREE.BufferGeometry();
+    const positions = [];
+    const colors = [];
+    const sizes = [];
+    const speeds = [];
+
+    // 创建粒子
+    for (let i = 0; i < config.count; i++) {
+      // 随机位置
+      positions.push(
+        THREE.MathUtils.randFloatSpread(2000), // x
+        THREE.MathUtils.randFloatSpread(2000), // y
+        THREE.MathUtils.randFloatSpread(1000) // z
+      );
+
+      // 随机颜色
+      const color =
+        config.colors[Math.floor(Math.random() * config.colors.length)];
+      colors.push(color.r, color.g, color.b);
+
+      // 随机大小
+      sizes.push(THREE.MathUtils.randFloat(config.size.min, config.size.max));
+
+      // 随机速度
+      speeds.push(
+        THREE.MathUtils.randFloat(config.speed.min, config.speed.max)
+      );
+    }
+
+    // 设置属性
+    geometry.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute(positions, 3)
+    );
+    geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+    geometry.setAttribute("size", new THREE.Float32BufferAttribute(sizes, 1));
+    geometry.setAttribute("speed", new THREE.Float32BufferAttribute(speeds, 1));
+
+    // 创建着色器材质
+    const material = new THREE.ShaderMaterial({
+      uniforms: {
+        time: { value: 0 },
+        pixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
+      },
+      vertexShader: this.getMagicalParticleVertexShader(),
+      fragmentShader: this.getMagicalParticleFragmentShader(),
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+
+    // 创建粒子系统
+    const particles = new THREE.Points(geometry, material);
+    this.magicalParticles.particles.push(particles);
+    this.scene.add(particles);
+  }
+
+  // 魔法粒子顶点着色器
+  getMagicalParticleVertexShader() {
+    return `
+      uniform float time;
+      uniform float pixelRatio;
+      attribute float size;
+      attribute float speed;
+      attribute vec3 color;
+      varying vec3 vColor;
+      
+      void main() {
+        vColor = color;
+        
+        // 添加魔法般的运动
+        vec3 pos = position;
+        float moveTime = time * speed;
+        
+        // 创建螺旋运动
+        float angle = moveTime * 0.5;
+        float radius = 50.0 * sin(moveTime * 0.2);
+        pos.x += cos(angle) * radius;
+        pos.y += sin(angle) * radius;
+        pos.z += sin(moveTime * 0.3) * 30.0;
+        
+        vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+        gl_Position = projectionMatrix * mvPosition;
+        
+        // 添加大小变化
+        float scale = sin(moveTime) * 0.2 + 0.8;
+        gl_PointSize = size * pixelRatio * scale * (300.0 / -mvPosition.z);
+      }
+    `;
+  }
+
+  // 魔法粒子片段着色器
+  getMagicalParticleFragmentShader() {
+    return `
+      varying vec3 vColor;
+      
+      void main() {
+        // 创建柔和的光晕效果
+        vec2 center = gl_PointCoord - vec2(0.5);
+        float dist = length(center);
+        
+        // 基础光晕
+        float strength = 1.0 - smoothstep(0.0, 0.5, dist);
+        
+        // 添加内部光芒
+        float innerGlow = smoothstep(0.4, 0.0, dist);
+        
+        // 组合效果
+        vec3 finalColor = vColor * strength + vColor * innerGlow * 0.5;
+        float alpha = strength;
+        
+        gl_FragColor = vec4(finalColor, alpha);
+      }
+    `;
+  }
+
+  // 更新魔法粒子
+  updateMagicalParticles(deltaTime) {
+    // 添加安全检查
+    if (!this.magicalParticles || !this.magicalParticles.enabled) return;
+
+    this.magicalParticles.particles.forEach((particles) => {
+      if (particles.material && particles.material.uniforms) {
+        particles.material.uniforms.time.value += deltaTime;
+      }
+    });
   }
 
   // 添加 animate 方法
@@ -380,6 +564,9 @@ class SceneManager {
 
       this.renderer.render(this.scene, this.camera);
     }
+
+    // 添加魔法粒子更新
+    this.updateMagicalParticles(deltaTime);
 
     requestAnimationFrame(this.animate.bind(this));
   }
@@ -1474,7 +1661,139 @@ class SceneManager {
       }
     });
   }
+
+  // 添加新的星云细节着色器
+  getNebulaDustShader() {
+    return `
+      uniform vec3 color;
+      uniform float opacity;
+      uniform float time;
+      varying vec2 vUv;
+      varying vec3 vPosition;
+
+      // 保持现有的噪声函数...
+
+      float fbm(vec3 x) {
+        float v = 0.0;
+        float a = 0.5;
+        vec3 shift = vec3(100);
+        for (int i = 0; i < 4; ++i) {
+          v += a * snoise(x);
+          x = x * 2.0 + shift;
+          a *= 0.5;
+        }
+        return v;
+      }
+
+      void main() {
+        vec2 uv = vUv * 2.0 - 1.0;
+        float dist = length(uv);
+        
+        // 创建复杂的尘埃云结构
+        float noise = fbm(vec3(vPosition.xy * 0.02, time * 0.1));
+        float noise2 = fbm(vec3(vPosition.yx * 0.03, time * 0.15 + 10.0));
+        
+        // 添加旋涡效果
+        float angle = atan(uv.y, uv.x);
+        float spiral = sin(angle * 3.0 + time * 0.2) * 0.5 + 0.5;
+        
+        // 组合效果
+        float alpha = smoothstep(1.0, 0.0, dist) * opacity;
+        alpha *= 1.0 + noise * 0.5 + noise2 * 0.3 + spiral * 0.2;
+        
+        // 颜色变化
+        vec3 finalColor = color;
+        finalColor += noise * 0.2 + spiral * 0.1;
+        finalColor *= 1.0 + sin(time * 0.5) * 0.1; // 添加脉冲效果
+        
+        // 边缘处理
+        alpha *= smoothstep(1.0, 0.2, dist);
+        alpha *= 1.0 - pow(dist, 3.0); // 更柔和的边缘衰减
+        
+        gl_FragColor = vec4(finalColor, alpha);
+      }
+    `;
+  }
+
+  createNebulaDust() {
+    const { dustClouds } = this.nebulaEnhancement;
+
+    for (let i = 0; i < dustClouds.count; i++) {
+      const size = THREE.MathUtils.randFloat(
+        dustClouds.size.min,
+        dustClouds.size.max
+      );
+      const opacity = THREE.MathUtils.randFloat(
+        dustClouds.opacity.min,
+        dustClouds.opacity.max
+      );
+
+      // 随机选择颜色
+      const colorSet = Math.random() > 0.5 ? "primary" : "secondary";
+      const colors = this.nebulaEnhancement.colorVariation[colorSet];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+
+      const geometry = new THREE.PlaneGeometry(size, size, 64, 64);
+      const material = new THREE.ShaderMaterial({
+        uniforms: {
+          time: { value: 0 },
+          color: { value: color },
+          opacity: { value: opacity },
+        },
+        vertexShader: this.getNebulaVertexShader(),
+        fragmentShader: this.getNebulaDustShader(),
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      });
+
+      const dust = new THREE.Mesh(geometry, material);
+
+      // 随机位置和旋转
+      dust.position.set(
+        THREE.MathUtils.randFloatSpread(1000),
+        THREE.MathUtils.randFloatSpread(1000),
+        THREE.MathUtils.randFloatSpread(500)
+      );
+
+      dust.rotation.set(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+        Math.random() * Math.PI
+      );
+
+      this.scene.add(dust);
+      this.nebulaDust.push({
+        mesh: dust,
+        rotationSpeed: THREE.MathUtils.randFloat(0.001, 0.003),
+        initialRotation: dust.rotation.clone(),
+      });
+    }
+  }
+
+  // 更新星云尘埃动画
+  updateNebulaDust(deltaTime) {
+    this.nebulaDust.forEach((dust) => {
+      // 更新旋转
+      dust.mesh.rotation.x =
+        dust.initialRotation.x + this.time * dust.rotationSpeed;
+      dust.mesh.rotation.y =
+        dust.initialRotation.y + this.time * dust.rotationSpeed * 0.8;
+
+      // 更新着色器时间
+      if (dust.mesh.material.uniforms) {
+        dust.mesh.material.uniforms.time.value = this.time;
+      }
+    });
+  }
 }
+
+// 等待 DOM 加载完成后初始化
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("DOM loaded, initializing SceneManager...");
+  const manager = new SceneManager();
+});
 
 // 等待 DOM 加载完成后初始化
 document.addEventListener("DOMContentLoaded", () => {
