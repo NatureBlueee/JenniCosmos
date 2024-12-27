@@ -1,5 +1,5 @@
 import * as THREE from "three";
-
+import { createNoise2D } from "simplex-noise";
 // 场景配置
 const config = {
   scene: {
@@ -181,14 +181,29 @@ class SceneManager {
     // 保存全局配置
     this.config = config;
 
-    // 初始化鼠标状态 - 移到最前面
+    // 初始化 Perlin Noise
+    this.noise = {
+      time: 0,
+      simplex: createNoise2D(),
+      flow: {
+        speed: 0.2,
+        scale: 0.002,
+        octaves: 4,
+        persistence: 0.6,
+        lacunarity: 2.0,
+      },
+    };
+
+    // 扩展鼠标状态
     this.mouseState = {
       position: new THREE.Vector2(0, 0),
       target: new THREE.Vector2(0, 0),
       damping: 0.025,
+      flowOffset: new THREE.Vector2(0, 0), // 用于存储噪声偏移
       sensitivity: {
         rotation: 0.0002,
         parallax: 0.05,
+        flow: 0.3, // 控制流体效果强度
       },
     };
 
@@ -584,7 +599,7 @@ class SceneManager {
     // 设置场景背景（使用更亮的颜色以便于调试）
     this.scene.background = new THREE.Color(0x0a0a14);
 
-    // 添加环境光
+    // 添加环境���
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     this.scene.add(ambientLight);
 
@@ -650,49 +665,72 @@ class SceneManager {
 
     const { drift, rotation } = this.cameraState;
 
-    // 基础漂浮动画
-    if (drift.enabled) {
-      drift.time += deltaTime * drift.speed;
+    // 更新噪声时间
+    this.noise.time += deltaTime * this.noise.flow.speed;
 
-      // 使用更柔和的正弦函数
-      const driftX = Math.sin(drift.time * 0.3) * drift.amplitude.x;
-      const driftY = Math.cos(drift.time * 0.2) * drift.amplitude.y;
-      const driftZ = Math.sin(drift.time * 0.15) * drift.amplitude.z;
-
-      // 减小鼠标影响
-      const mouseInfluenceX = this.mouseState.position.x * 150;
-      const mouseInfluenceY = this.mouseState.position.y * 150;
-
-      // 组合漂浮和鼠标效果
-      this.camera.position.x = driftX + mouseInfluenceX;
-      this.camera.position.y = driftY + mouseInfluenceY;
-      this.camera.position.z = 1500 + driftZ;
-
-      // 更柔和的注视点计算
-      const lookAtPoint = new THREE.Vector3(
-        mouseInfluenceX * 0.3,
-        mouseInfluenceY * 0.3,
-        0
-      );
-
-      // 添加更缓慢的旋转效果
-      if (rotation.enabled) {
-        rotation.time += deltaTime;
-        lookAtPoint.x += Math.sin(rotation.time * 0.08) * 40;
-        lookAtPoint.y += Math.cos(rotation.time * 0.08) * 40;
-      }
-
-      // 平滑地更新相机朝向
-      this.camera.lookAt(lookAtPoint);
-    }
-
-    // 更新鼠标位置（更强的阻尼效果）
+    // 计算基础鼠标位置（带阻尼）
     this.mouseState.position.x +=
       (this.mouseState.target.x - this.mouseState.position.x) *
       this.mouseState.damping;
     this.mouseState.position.y +=
       (this.mouseState.target.y - this.mouseState.position.y) *
       this.mouseState.damping;
+
+    // 计算流体效果
+    const flowX =
+      this.calculateFlowEffect(
+        this.mouseState.position.x * 10,
+        this.mouseState.position.y * 10,
+        this.noise.time
+      ) * this.mouseState.sensitivity.flow;
+
+    const flowY =
+      this.calculateFlowEffect(
+        this.mouseState.position.x * 10 + 4321, // 偏移采样点以获得不同的模式
+        this.mouseState.position.y * 10 + 1234,
+        this.noise.time
+      ) * this.mouseState.sensitivity.flow;
+
+    // 更新流体偏移
+    this.mouseState.flowOffset.x +=
+      (flowX - this.mouseState.flowOffset.x) * 0.1;
+    this.mouseState.flowOffset.y +=
+      (flowY - this.mouseState.flowOffset.y) * 0.1;
+
+    if (drift.enabled) {
+      drift.time += deltaTime * drift.speed;
+
+      // 基础漂浮
+      const driftX = Math.sin(drift.time * 0.3) * drift.amplitude.x;
+      const driftY = Math.cos(drift.time * 0.2) * drift.amplitude.y;
+      const driftZ = Math.sin(drift.time * 0.15) * drift.amplitude.z;
+
+      // 组合鼠标位置和流体效果
+      const mouseInfluenceX =
+        (this.mouseState.position.x + this.mouseState.flowOffset.x) * 150;
+      const mouseInfluenceY =
+        (this.mouseState.position.y + this.mouseState.flowOffset.y) * 150;
+
+      // 应用最终位置
+      this.camera.position.x = driftX + mouseInfluenceX;
+      this.camera.position.y = driftY + mouseInfluenceY;
+      this.camera.position.z = 1500 + driftZ;
+
+      // 计算注视点（加入流体效果）
+      const lookAtPoint = new THREE.Vector3(
+        mouseInfluenceX * 0.3 + this.mouseState.flowOffset.x * 50,
+        mouseInfluenceY * 0.3 + this.mouseState.flowOffset.y * 50,
+        0
+      );
+
+      if (rotation.enabled) {
+        rotation.time += deltaTime;
+        lookAtPoint.x += Math.sin(rotation.time * 0.08) * 40;
+        lookAtPoint.y += Math.cos(rotation.time * 0.08) * 40;
+      }
+
+      this.camera.lookAt(lookAtPoint);
+    }
 
     this.camera.updateProjectionMatrix();
   }
@@ -1075,6 +1113,27 @@ class SceneManager {
 
     setInterval(updateDebug, 100);
     document.body.appendChild(debugContainer);
+  }
+
+  // 添加 Perlin Noise 流体效果计算
+  calculateFlowEffect(x, y, time) {
+    const { flow } = this.noise;
+    let amplitude = 1;
+    let frequency = 1;
+    let noiseValue = 0;
+
+    // 多重八度噪声叠加
+    for (let i = 0; i < flow.octaves; i++) {
+      const sampleX = x * frequency * flow.scale + time;
+      const sampleY = y * frequency * flow.scale + time;
+
+      noiseValue += this.noise.simplex(sampleX, sampleY) * amplitude;
+
+      amplitude *= flow.persistence;
+      frequency *= flow.lacunarity;
+    }
+
+    return noiseValue;
   }
 }
 
