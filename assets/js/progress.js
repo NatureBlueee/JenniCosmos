@@ -19,36 +19,39 @@ const config = {
     background: new THREE.Color(0x000814),
   },
   starfield: {
-    count: 15000,
     layers: [
       {
-        distance: 800,
-        size: { min: 0.8, max: 2.0 },
+        count: 3000,
+        size: { min: 1.2, max: 2.5 },
+        distance: 1000,
+        color: new THREE.Color(0xffffff),
+        rotationSpeed: 0.02,
+        opacity: { min: 0.4, max: 0.8 },
+      },
+      {
         count: 5000,
-        concentration: 0.7,
+        size: { min: 0.8, max: 1.5 },
+        distance: 1800,
+        color: new THREE.Color(0xb0c4de),
+        rotationSpeed: 0.015,
+        opacity: { min: 0.3, max: 0.6 },
       },
       {
-        distance: 1500,
-        size: { min: 0.6, max: 1.5 },
-        count: 6000,
-        concentration: 0.5,
-      },
-      {
+        count: 8000,
+        size: { min: 0.4, max: 0.8 },
         distance: 2500,
-        size: { min: 0.3, max: 1.0 },
-        count: 4000,
-        concentration: 0.3,
+        color: new THREE.Color(0x87ceeb),
+        rotationSpeed: 0.01,
+        opacity: { min: 0.2, max: 0.5 },
       },
     ],
     colors: {
-      base: new THREE.Color(0x6b8cce),
-      highlight: new THREE.Color(0xd6e4ff),
       variants: [
-        new THREE.Color(0xffffff).multiplyScalar(1.5),
-        new THREE.Color(0xadd8e6).multiplyScalar(1.2),
-        new THREE.Color(0x87ceeb).multiplyScalar(1.2),
-        new THREE.Color(0xe6e6fa).multiplyScalar(1.2),
-        new THREE.Color(0xb0c4de).multiplyScalar(1.2),
+        new THREE.Color(0xffffff), // 纯白
+        new THREE.Color(0xffd700), // 金色
+        new THREE.Color(0x87ceeb), // 天蓝
+        new THREE.Color(0xff69b4), // 粉红
+        new THREE.Color(0x32cd32), // 青绿
       ],
     },
   },
@@ -505,6 +508,26 @@ class SceneManager {
       targetPosition: new THREE.Vector3(0, 0, 2000),
       easing: (t) => 1 - Math.pow(1 - t, 3),
       progress: 0,
+    };
+
+    const ambientConfig = {
+      nebulae: [
+        {
+          color: new THREE.Color(0x4b0082).multiplyScalar(0.3),
+          size: 2000,
+          opacity: 0.15,
+        },
+        {
+          color: new THREE.Color(0x800080).multiplyScalar(0.2),
+          size: 2500,
+          opacity: 0.12,
+        },
+      ],
+      volumetricLight: {
+        intensity: 0.08,
+        decay: 2.0,
+        density: 0.15,
+      },
     };
   }
 
