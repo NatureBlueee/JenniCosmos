@@ -256,6 +256,66 @@ class SceneManager {
 
     // 开始动画循环
     this.animate();
+
+    // 扩展星空配置
+    this.starfieldConfig = {
+      // 基础星星
+      stars: {
+        count: 15000,
+        layers: [
+          {
+            count: 5000,
+            size: { min: 0.1, max: 0.3 },
+            color: new THREE.Color(0xffffff),
+            distance: { min: 800, max: 1200 },
+            brightness: { min: 0.5, max: 1.0 },
+            pulseSpeed: { min: 0.5, max: 1.5 },
+          },
+          {
+            count: 7000,
+            size: { min: 0.05, max: 0.15 },
+            color: new THREE.Color(0xb0c4de),
+            distance: { min: 1200, max: 1800 },
+            brightness: { min: 0.3, max: 0.7 },
+            pulseSpeed: { min: 0.3, max: 0.8 },
+          },
+          {
+            count: 3000,
+            size: { min: 0.15, max: 0.4 },
+            color: new THREE.Color(0xffd700),
+            distance: { min: 600, max: 1000 },
+            brightness: { min: 0.6, max: 1.0 },
+            pulseSpeed: { min: 0.8, max: 1.2 },
+          },
+        ],
+        // 星芒效果
+        starburst: {
+          enabled: true,
+          rays: 6,
+          scale: { min: 1.2, max: 2.0 },
+          intensity: { min: 0.3, max: 0.7 },
+        },
+      },
+      // 星团
+      clusters: {
+        count: 5,
+        size: { min: 100, max: 300 },
+        density: { min: 50, max: 200 },
+        color: new THREE.Color(0xe6e6fa),
+        opacity: { min: 0.2, max: 0.4 },
+      },
+      // 星云
+      nebulae: {
+        count: 3,
+        size: { min: 500, max: 1000 },
+        colors: [
+          new THREE.Color(0x4b0082).multiplyScalar(0.3), // 深紫色
+          new THREE.Color(0x800080).multiplyScalar(0.2), // 紫色
+          new THREE.Color(0x4169e1).multiplyScalar(0.25), // 蓝色
+        ],
+        opacity: { min: 0.1, max: 0.2 },
+      },
+    };
   }
 
   // 添加 animate 方法
@@ -1165,6 +1225,70 @@ class SceneManager {
     }
 
     return noiseValue;
+  }
+
+  // 更新星星着色器
+  getStarVertexShader() {
+    return `
+      uniform float time;
+      uniform float pixelRatio;
+      
+      attribute float size;
+      attribute vec3 color;
+      attribute float brightness;
+      attribute float pulseSpeed;
+      attribute float starburstScale;
+      
+      varying vec3 vColor;
+      varying float vBrightness;
+      varying float vStarburstScale;
+      
+      void main() {
+        vColor = color;
+        
+        // 计算脉冲效果
+        float pulse = sin(time * pulseSpeed) * 0.1 + 0.9;
+        vBrightness = brightness * pulse;
+        vStarburstScale = starburstScale;
+        
+        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+        gl_Position = projectionMatrix * mvPosition;
+        
+        // 应用大小和脉冲
+        gl_PointSize = size * pixelRatio * pulse;
+      }
+    `;
+  }
+
+  getStarFragmentShader() {
+    return `
+      uniform float time;
+      
+      varying vec3 vColor;
+      varying float vBrightness;
+      varying float vStarburstScale;
+      
+      void main() {
+        vec2 center = gl_PointCoord - vec2(0.5);
+        float dist = length(center);
+        
+        // 基础星星形状
+        float alpha = smoothstep(0.5, 0.3, dist);
+        
+        // 星芒效果
+        float rays = 0.0;
+        float numRays = 6.0;
+        for(float i = 0.0; i < numRays; i++) {
+          float angle = i * 3.14159 * 2.0 / numRays;
+          vec2 dir = vec2(cos(angle), sin(angle));
+          rays += smoothstep(0.3, 0.0, abs(dot(normalize(center), dir))) * 0.3;
+        }
+        
+        // 组合效果
+        vec3 finalColor = vColor * (vBrightness + rays * vStarburstScale);
+        gl_FragColor = vec4(finalColor, alpha);
+      }
+    `;
   }
 }
 
