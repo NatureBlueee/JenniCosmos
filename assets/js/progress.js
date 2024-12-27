@@ -2511,7 +2511,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // 重写连接线创建函数，确保正确定位
 function createConnectionLines() {
-  // 清除现有的连接线
   document
     .querySelectorAll(".connection-line")
     .forEach((line) => line.remove());
@@ -2526,66 +2525,204 @@ function createConnectionLines() {
       const currentNode = node;
       const nextNode = nodes[i + 1];
 
-      // 创建连接线
       const line = document.createElement("div");
       line.className = "connection-line";
       container.appendChild(line);
 
-      // 获取节点位置
       const rect1 = currentNode.getBoundingClientRect();
       const rect2 = nextNode.getBoundingClientRect();
       const containerRect = container.getBoundingClientRect();
 
-      // 计算连接线起点和终点
       const x1 = rect1.left + rect1.width / 2 - containerRect.left;
       const y1 = rect1.top + rect1.height / 2 - containerRect.top;
       const x2 = rect2.left + rect2.width / 2 - containerRect.left;
       const y2 = rect2.top + rect2.height / 2 - containerRect.top;
 
-      // 计算连接线长度和角度
       const length = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
       const angle = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
 
-      // 设置连接线样式
       line.style.cssText = `
         width: ${length}px;
         left: ${x1}px;
         top: ${y1}px;
         transform: rotate(${angle}deg);
-        --color: ${getComputedStyle(currentNode).getPropertyValue("--color")};
+        animation-delay: ${i * 0.2}s;
       `;
-
-      // 添加动画效果
-      line.style.animation = `glowPulse 2s ease-in-out infinite ${i * 0.2}s`;
     }
   });
 }
 
-// 添加动画效果
-style.textContent += `
-  @keyframes glowPulse {
-    0%, 100% { opacity: 0.4; }
+// 确保在DOM加载完成后创建连接线
+document.addEventListener("DOMContentLoaded", () => {
+  // 延迟执行以确保其他元素都已经正确渲染
+  setTimeout(() => {
+    createConnectionLines();
+    console.log("Connection lines creation attempted");
+  }, 1000);
+});
+
+// 添加窗口调整时重新计算
+window.addEventListener("resize", () => {
+  setTimeout(createConnectionLines, 100);
+});
+
+const connectionStyle = document.createElement("style");
+connectionStyle.textContent = `
+  .energy-path {
+    position: absolute;
+    height: 30px; /* 增加通道高度 */
+    pointer-events: none;
+    z-index: 10;
+    /* 添加通道基础发光 */
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      rgba(147, 51, 234, 0.1) 50%,
+      transparent
+    );
+  }
+
+  /* 能量通道 */
+  .energy-channel {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    transform: translateY(-50%);
+    background: rgba(147, 51, 234, 0.2);
+    filter: blur(1px);
+  }
+
+  /* 多个能量粒子 */
+  .energy-particle {
+    position: absolute;
+    width: 20px;
+    height: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: radial-gradient(
+      circle at center,
+      rgba(255, 255, 255, 0.9),
+      rgba(147, 51, 234, 0.8) 40%,
+      transparent 80%
+    );
+    filter: drop-shadow(0 0 10px rgba(147, 51, 234, 0.8));
+  }
+
+  /* 创建多个粒子实例 */
+  .energy-particle:nth-child(1) { animation: particleFlow 2s linear infinite; }
+  .energy-particle:nth-child(2) { animation: particleFlow 2s linear infinite 0.4s; }
+  .energy-particle:nth-child(3) { animation: particleFlow 2s linear infinite 0.8s; }
+  .energy-particle:nth-child(4) { animation: particleFlow 2s linear infinite 1.2s; }
+  .energy-particle:nth-child(5) { animation: particleFlow 2s linear infinite 1.6s; }
+
+  @keyframes particleFlow {
+    0% {
+      left: -20px;
+      opacity: 0;
+      transform: translateY(-50%) scale(0.8);
+    }
+    10% {
+      opacity: 1;
+      transform: translateY(-50%) scale(1.2);
+    }
+    90% {
+      opacity: 1;
+      transform: translateY(-50%) scale(1.2);
+    }
+    100% {
+      left: calc(100% + 20px);
+      opacity: 0;
+      transform: translateY(-50%) scale(0.8);
+    }
+  }
+
+  /* 通道发光动画 */
+  .energy-glow {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(147, 51, 234, 0.3),
+      transparent
+    );
+    animation: channelPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes channelPulse {
+    0%, 100% { opacity: 0.3; }
     50% { opacity: 0.6; }
   }
 `;
 
-// 确保在DOM加载完成和窗口调整时重新计算连接线
-document.addEventListener("DOMContentLoaded", () => {
-  createConnectionLines();
+document.head.appendChild(connectionStyle);
 
-  // 监听窗口调整，重新计算连接线
-  window.addEventListener("resize", debounce(createConnectionLines, 250));
+function createEnergyConnections() {
+  document.querySelectorAll(".energy-path").forEach((path) => path.remove());
+
+  const nodes = document.querySelectorAll(".milestone-node");
+  const container = document.querySelector(".journey-path");
+
+  if (!container || nodes.length < 2) return;
+
+  nodes.forEach((node, i) => {
+    if (i < nodes.length - 1) {
+      const currentNode = node;
+      const nextNode = nodes[i + 1];
+
+      const path = document.createElement("div");
+      path.className = "energy-path";
+      container.appendChild(path);
+
+      // 创建能量通道
+      const channel = document.createElement("div");
+      channel.className = "energy-channel";
+      path.appendChild(channel);
+
+      // 创建通道发光效果
+      const glow = document.createElement("div");
+      glow.className = "energy-glow";
+      path.appendChild(glow);
+
+      // 创建多个能量粒子
+      for (let j = 0; j < 5; j++) {
+        const particle = document.createElement("div");
+        particle.className = "energy-particle";
+        path.appendChild(particle);
+      }
+
+      const rect1 = currentNode.getBoundingClientRect();
+      const rect2 = nextNode.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+
+      const x1 = rect1.left + rect1.width / 2 - containerRect.left;
+      const y1 = rect1.top + rect1.height / 2 - containerRect.top;
+      const x2 = rect2.left + rect2.width / 2 - containerRect.left;
+      const y2 = rect2.top + rect2.height / 2 - containerRect.top;
+
+      const length = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+      const angle = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
+
+      path.style.cssText = `
+        width: ${length}px;
+        left: ${x1}px;
+        top: ${y1}px;
+        transform: rotate(${angle}deg);
+      `;
+    }
+  });
+}
+
+// 确保在DOM加载完成和窗口调整时创建连接
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(createEnergyConnections, 1000);
 });
 
-// 防抖函数
-function debounce(func, wait) {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-}
+window.addEventListener("resize", () => {
+  setTimeout(createEnergyConnections, 100);
+});
