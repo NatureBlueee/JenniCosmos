@@ -181,29 +181,31 @@ class SceneManager {
     // 保存全局配置
     this.config = config;
 
-    // 初始化 Perlin Noise
+    // 调整3D噪声配置
     this.noise = {
       time: 0,
       simplex: createNoise2D(),
       flow: {
-        speed: 0.2,
-        scale: 0.002,
-        octaves: 4,
-        persistence: 0.6,
-        lacunarity: 2.0,
+        speed: 0.04,
+        scale: 0.02,
+        octaves: 2.5,
+        persistence: 0.35,
+        lacunarity: 1.5,
+        zScale: 0.2,
       },
     };
 
-    // 扩展鼠标状态
+    // 调整鼠标状态
     this.mouseState = {
       position: new THREE.Vector2(0, 0),
       target: new THREE.Vector2(0, 0),
-      damping: 0.025,
-      flowOffset: new THREE.Vector2(0, 0), // 用于存储噪声偏移
+      damping: 0.012,
+      flowOffset: new THREE.Vector3(0, 0, 0),
       sensitivity: {
-        rotation: 0.0002,
+        rotation: 0.0001,
         parallax: 0.05,
-        flow: 0.3, // 控制流体效果强度
+        flow: 0.18,
+        depth: 0.045,
       },
     };
 
@@ -599,7 +601,7 @@ class SceneManager {
     // 设置场景背景（使用更亮的颜色以便于调试）
     this.scene.background = new THREE.Color(0x0a0a14);
 
-    // 添加环境���
+    // 添加环境光
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     this.scene.add(ambientLight);
 
@@ -676,26 +678,20 @@ class SceneManager {
       (this.mouseState.target.y - this.mouseState.position.y) *
       this.mouseState.damping;
 
-    // 计算流体效果
-    const flowX =
-      this.calculateFlowEffect(
-        this.mouseState.position.x * 10,
-        this.mouseState.position.y * 10,
-        this.noise.time
-      ) * this.mouseState.sensitivity.flow;
+    // 计算3D流体效果
+    const flow = this.calculateFlowEffect(
+      this.mouseState.position.x * 10,
+      this.mouseState.position.y * 10,
+      this.noise.time
+    );
 
-    const flowY =
-      this.calculateFlowEffect(
-        this.mouseState.position.x * 10 + 4321, // 偏移采样点以获得不同的模式
-        this.mouseState.position.y * 10 + 1234,
-        this.noise.time
-      ) * this.mouseState.sensitivity.flow;
-
-    // 更新流体偏移
+    // 平滑更新流体偏移
     this.mouseState.flowOffset.x +=
-      (flowX - this.mouseState.flowOffset.x) * 0.1;
+      (flow.x - this.mouseState.flowOffset.x) * 0.1;
     this.mouseState.flowOffset.y +=
-      (flowY - this.mouseState.flowOffset.y) * 0.1;
+      (flow.y - this.mouseState.flowOffset.y) * 0.1;
+    this.mouseState.flowOffset.z +=
+      (flow.z - this.mouseState.flowOffset.z) * 0.1;
 
     if (drift.enabled) {
       drift.time += deltaTime * drift.speed;
@@ -705,22 +701,22 @@ class SceneManager {
       const driftY = Math.cos(drift.time * 0.2) * drift.amplitude.y;
       const driftZ = Math.sin(drift.time * 0.15) * drift.amplitude.z;
 
-      // 组合鼠标位置和流体效果
+      // 应用3D位置
       const mouseInfluenceX =
         (this.mouseState.position.x + this.mouseState.flowOffset.x) * 150;
       const mouseInfluenceY =
         (this.mouseState.position.y + this.mouseState.flowOffset.y) * 150;
+      const mouseInfluenceZ = this.mouseState.flowOffset.z * 100; // Z轴影响
 
-      // 应用最终位置
       this.camera.position.x = driftX + mouseInfluenceX;
       this.camera.position.y = driftY + mouseInfluenceY;
-      this.camera.position.z = 1500 + driftZ;
+      this.camera.position.z = 1500 + driftZ + mouseInfluenceZ;
 
-      // 计算注视点（加入流体效果）
+      // 更新注视点以创建更动态的视角
       const lookAtPoint = new THREE.Vector3(
         mouseInfluenceX * 0.3 + this.mouseState.flowOffset.x * 50,
         mouseInfluenceY * 0.3 + this.mouseState.flowOffset.y * 50,
-        0
+        this.mouseState.flowOffset.z * 30
       );
 
       if (rotation.enabled) {
@@ -1115,19 +1111,31 @@ class SceneManager {
     document.body.appendChild(debugContainer);
   }
 
-  // 添加 Perlin Noise 流体效果计算
+  // 修改为3D流体效果计算
   calculateFlowEffect(x, y, time) {
     const { flow } = this.noise;
     let amplitude = 1;
     let frequency = 1;
-    let noiseValue = 0;
+    let noiseValue = {
+      x: 0,
+      y: 0,
+      z: 0,
+    };
 
-    // 多重八度噪声叠加
+    // 为每个维度计算独立的噪声值
     for (let i = 0; i < flow.octaves; i++) {
       const sampleX = x * frequency * flow.scale + time;
       const sampleY = y * frequency * flow.scale + time;
+      const sampleZ =
+        (x + y) * frequency * flow.scale * flow.zScale + time * 0.7;
 
-      noiseValue += this.noise.simplex(sampleX, sampleY) * amplitude;
+      // 使用不同的相位偏移来创建独立的运动
+      noiseValue.x += this.noise.simplex(sampleX, sampleY + 1000) * amplitude;
+      noiseValue.y += this.noise.simplex(sampleX + 1000, sampleY) * amplitude;
+      noiseValue.z +=
+        this.noise.simplex(sampleX + 2000, sampleY + 2000) *
+        amplitude *
+        flow.zScale;
 
       amplitude *= flow.persistence;
       frequency *= flow.lacunarity;
