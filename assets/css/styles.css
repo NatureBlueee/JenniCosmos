@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .font-cormorant {
+    font-family: "Cormorant Garamond", serif;
+  }
+
+  .magical-card {
+    @apply bg-white/10 backdrop-blur-lg border border-white/20 transition-all duration-300;
+  }
+
+  .magical-card:hover {
+    @apply -translate-y-1 shadow-lg shadow-indigo-900/15 border-white/30;
+  }
+
+  .magical-glow {
+    animation: magicalGlow 3s infinite;
+  }
+}
+
+@keyframes magicalGlow {
+  0% {
+    box-shadow:
+      0 0 5px #4f46e5,
+      0 0 10px #4f46e5,
+      0 0 15px #4f46e5;
+  }
+  50% {
+    box-shadow:
+      0 0 10px #9333ea,
+      0 0 20px #9333ea,
+      0 0 30px #9333ea;
+  }
+  100% {
+    box-shadow:
+      0 0 5px #4f46e5,
+      0 0 10px #4f46e5,
+      0 0 15px #4f46e5;
+  }
+}
