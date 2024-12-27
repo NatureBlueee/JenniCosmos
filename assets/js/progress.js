@@ -442,222 +442,262 @@ class SceneManager {
 
   // 添加进度面板初始化方法
   initProgressPanel() {
-    // 创建进度面板容器
+    if (document.querySelector(".progress-container")) return;
+
+    const progressData = [
+      {
+        id: "concept",
+        icon: "✧",
+        title: "Initial Concept",
+        progress: 100,
+        color: "rgba(147, 51, 234, 0.8)",
+        glowColor: "rgba(147, 51, 234, 0.2)",
+        description: "The birth of an idea",
+      },
+      {
+        id: "planning",
+        icon: "✧",
+        title: "Planning Phase",
+        progress: 100,
+        color: "rgba(79, 70, 229, 0.8)",
+        glowColor: "rgba(79, 70, 229, 0.2)",
+        description: "Structuring the journey",
+      },
+      {
+        id: "design",
+        icon: "✧",
+        title: "Visual Design",
+        progress: 100,
+        color: "rgba(59, 130, 246, 0.8)",
+        glowColor: "rgba(59, 130, 246, 0.2)",
+        description: "Creating the aesthetic",
+      },
+      {
+        id: "development",
+        icon: "✧",
+        title: "Core Development",
+        progress: 75,
+        color: "rgba(16, 185, 129, 0.8)",
+        glowColor: "rgba(16, 185, 129, 0.2)",
+        description: "Building the foundation",
+      },
+      {
+        id: "integration",
+        icon: "✧",
+        title: "Integration",
+        progress: 50,
+        color: "rgba(245, 158, 11, 0.8)",
+        glowColor: "rgba(245, 158, 11, 0.2)",
+        description: "Connecting the pieces",
+      },
+      {
+        id: "polish",
+        icon: "✧",
+        title: "Polish & Refinement",
+        progress: 25,
+        color: "rgba(239, 68, 68, 0.8)",
+        glowColor: "rgba(239, 68, 68, 0.2)",
+        description: "Adding the final touches",
+      },
+    ];
+
     const progressContainer = document.createElement("div");
     progressContainer.className = "progress-container";
-    progressContainer.innerHTML = `
-      <div class="progress-panel">
-        <h2>Jenny's Blog</h2>
-        <div class="progress-subtitle">Development Progress</div>
-        <div class="progress-items">
-          <div class="progress-item">
-            <div class="progress-title">Design Phase</div>
-            <div class="progress-bar">
-              <div class="progress-fill" style="width: 80%"></div>
+
+    const html = `
+      <div class="cosmic-journey">
+        <div class="journey-path">
+          ${progressData
+            .map(
+              (item, i) => `
+            <div class="milestone-node" 
+                 style="--index: ${i}; --color: ${item.color}; --glow-color: ${item.glowColor}">
+              <div class="node-content">
+                <div class="cosmic-card">
+                  <div class="card-glow"></div>
+                  <div class="content-wrapper">
+                    <span class="cosmic-icon">${item.icon}</span>
+                    <div class="info">
+                      <h3>${item.title}</h3>
+                      <p>${item.description}</p>
+                      <div class="progress-track">
+                        <div class="progress-fill" style="width: 0%">
+                          <div class="progress-stars"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <span class="progress-value">0%</span>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-          <div class="progress-item">
-            <div class="progress-title">Core Features</div>
-            <div class="progress-bar">
-              <div class="progress-fill" style="width: 65%"></div>
-            </div>
-          </div>
-          <div class="progress-item">
-            <div class="progress-title">Content Creation</div>
-            <div class="progress-bar">
-              <div class="progress-fill" style="width: 45%"></div>
-            </div>
-          </div>
+          `
+            )
+            .join("")}
         </div>
       </div>
     `;
+
+    progressContainer.innerHTML = html;
 
     const style = document.createElement("style");
     style.textContent = `
       .progress-container {
         position: fixed;
-        left: 2rem;
-        top: 50%;
-        transform: translateY(-50%);
-        z-index: 1000;
+        inset: 0;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+      }
+
+      .cosmic-journey {
+        width: 100%;
+        max-width: 1200px;
+        padding: 2rem;
+      }
+
+      .journey-path {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 2rem;
+      }
+
+      .milestone-node {
+        --delay: calc(var(--index) * 0.4s);
         opacity: 0;
-        animation: fadeIn 1.5s ease-out forwards;
+        transform: translateY(30px);
+        animation: fadeSlideIn 0.8s ease forwards;
+        animation-delay: var(--delay);
+        pointer-events: auto;
       }
-      
-      @keyframes fadeIn {
-        0% { opacity: 0; transform: translateY(-50%) translateX(-30px); }
-        100% { opacity: 1; transform: translateY(-50%) translateX(0); }
-      }
-      
-      .progress-panel {
+
+      .cosmic-card {
         position: relative;
-        background: rgba(13, 13, 13, 0.45);
-        backdrop-filter: blur(12px);
-        border-radius: 16px;
-        padding: 2.5rem;
-        color: white;
-        font-family: 'Space Mono', monospace;
-        min-width: 320px;
+        padding: 1.5rem;
+        background: rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(8px);
+        border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
         overflow: hidden;
+        transition: all 0.5s ease;
       }
 
-      /* 添加微光边框效果 */
-      .progress-panel::before {
-        content: '';
+      .card-glow {
         position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        border-radius: 16px;
-        padding: 1px;
-        background: linear-gradient(
-          45deg,
-          rgba(255, 255, 255, 0.1),
-          rgba(255, 255, 255, 0.05) 50%,
-          rgba(255, 255, 255, 0.15)
-        );
-        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-        mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-        -webkit-mask-composite: xor;
-        mask-composite: exclude;
-      }
-
-      /* 添加星尘效果 */
-      .progress-panel::after {
-        content: '';
-        position: absolute;
-        top: -50%;
-        left: -50%;
-        right: -50%;
-        bottom: -50%;
+        inset: 0;
         background: radial-gradient(
-          circle at center,
-          rgba(255, 255, 255, 0.03) 0%,
+          circle at var(--x, 50%) var(--y, 50%),
+          var(--glow-color) 0%,
           transparent 70%
         );
         opacity: 0.5;
-        animation: starDust 20s linear infinite;
+        transition: opacity 0.3s ease;
       }
 
-      @keyframes starDust {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+      .cosmic-card:hover .card-glow {
+        opacity: 1;
       }
 
-      .panel-content {
+      .content-wrapper {
         position: relative;
         z-index: 1;
       }
 
-      .progress-panel h2 {
-        font-size: 1.8rem;
-        margin: 0 0 0.5rem 0;
-        font-weight: 500;
-        background: linear-gradient(45deg, #fff, #64b5f6);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.1));
-        letter-spacing: 0.02em;
+      .cosmic-icon {
+        font-size: 1.5rem;
+        color: var(--color);
+        text-shadow: 0 0 10px var(--glow-color);
       }
 
-      .progress-subtitle {
+      .info h3 {
+        margin: 0.5rem 0;
+        color: white;
+        font-size: 1.2rem;
+        text-shadow: 0 0 15px var(--color);
+      }
+
+      .info p {
+        color: rgba(255, 255, 255, 0.7);
         font-size: 0.9rem;
-        color: rgba(255, 255, 255, 0.5);
-        margin-bottom: 2.5rem;
-        letter-spacing: 0.08em;
-        font-weight: 300;
+        margin-bottom: 1rem;
       }
 
-      .progress-items {
-        display: flex;
-        flex-direction: column;
-        gap: 1.8rem;
-      }
-
-      .progress-item {
-        opacity: 0;
-        animation: slideIn 0.8s ease-out forwards;
-      }
-
-      @keyframes slideIn {
-        0% { opacity: 0; transform: translateX(-15px); }
-        100% { opacity: 1; transform: translateX(0); }
-      }
-
-      .progress-item:nth-child(1) { animation-delay: 0.3s; }
-      .progress-item:nth-child(2) { animation-delay: 0.5s; }
-      .progress-item:nth-child(3) { animation-delay: 0.7s; }
-
-      .progress-title {
-        font-size: 0.9rem;
-        margin-bottom: 0.8rem;
-        color: rgba(255, 255, 255, 0.75);
-        font-weight: 300;
-        letter-spacing: 0.04em;
-      }
-
-      .progress-bar {
-        height: 3px;
-        background: rgba(255, 255, 255, 0.08);
-        border-radius: 3px;
+      .progress-track {
+        height: 4px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 2px;
         overflow: hidden;
-        position: relative;
       }
 
       .progress-fill {
         height: 100%;
-        background: linear-gradient(90deg, 
-          rgba(100, 181, 246, 0.8),
-          rgba(33, 150, 243, 0.9)
-        );
-        box-shadow: 0 0 20px rgba(33, 150, 243, 0.2);
-        border-radius: 3px;
-        width: 0;
-        animation: fillProgress 2s ease-out forwards;
+        background: var(--color);
         position: relative;
+        transition: width 1s ease;
       }
 
-      /* 添加流光效果 */
-      .progress-fill::after {
-        content: '';
+      .progress-stars {
         position: absolute;
-        top: 0;
-        left: 0;
         right: 0;
-        bottom: 0;
-        background: linear-gradient(
-          90deg,
-          transparent,
-          rgba(255, 255, 255, 0.2),
-          transparent
-        );
-        transform: translateX(-100%);
-        animation: shimmer 2s infinite;
+        top: 0;
+        height: 100%;
+        width: 20px;
+        background: linear-gradient(90deg, transparent, var(--color));
+        animation: starMove 1s linear infinite;
       }
 
-      @keyframes shimmer {
-        100% { transform: translateX(100%); }
+      @keyframes fadeSlideIn {
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
       }
 
-      @keyframes fillProgress {
-        0% { width: 0; }
-        100% { width: var(--progress-width); }
+      @keyframes starMove {
+        from { transform: translateX(-100%); }
+        to { transform: translateX(100%); }
+      }
+
+      @media (max-width: 1024px) {
+        .journey-path {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+
+      @media (max-width: 640px) {
+        .journey-path {
+          grid-template-columns: 1fr;
+        }
       }
     `;
 
     document.head.appendChild(style);
     document.body.appendChild(progressContainer);
 
-    // 延迟设置进度条宽度以触发动画
-    setTimeout(() => {
-      const fills = document.querySelectorAll(".progress-fill");
-      fills.forEach((fill) => {
-        const width = fill.style.width;
-        fill.style.setProperty("--progress-width", width);
-        fill.style.width = "0";
+    // 添加鼠标跟踪效果
+    const cards = document.querySelectorAll(".cosmic-card");
+    cards.forEach((card) => {
+      card.addEventListener("mousemove", (e) => {
+        const rect = card.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+        card.querySelector(".card-glow").style.setProperty("--x", `${x}%`);
+        card.querySelector(".card-glow").style.setProperty("--y", `${y}%`);
       });
-    }, 100);
+    });
+
+    // 延迟加载进度条动画
+    setTimeout(() => {
+      document.querySelectorAll(".milestone-node").forEach((node, i) => {
+        const data = progressData[i];
+        const fill = node.querySelector(".progress-fill");
+        const value = node.querySelector(".progress-value");
+
+        fill.style.width = `${data.progress}%`;
+        value.textContent = `${data.progress}%`;
+      });
+    }, 500);
   }
 
   // 新增魔法粒子创建方法
@@ -2116,16 +2156,169 @@ class SceneManager {
       );
     });
   }
+
+  // 将 initProgressInteractions 方法添加到 SceneManager 类中
+  initProgressInteractions() {
+    const groups = document.querySelectorAll(".progress-group");
+
+    groups.forEach((group) => {
+      // 添加悬停效果
+      group.addEventListener("mouseenter", () => {
+        const fill = group.querySelector(".progress-fill");
+        if (fill) {
+          fill.style.filter = "brightness(1.2)";
+          this.createStardustEffect(group);
+        }
+      });
+
+      group.addEventListener("mouseleave", () => {
+        const fill = group.querySelector(".progress-fill");
+        if (fill) {
+          fill.style.filter = "brightness(1)";
+        }
+      });
+
+      // 初始化进度条动画
+      const fill = group.querySelector(".progress-fill");
+      if (fill) {
+        const width = fill.style.width;
+        fill.style.width = "0%";
+        setTimeout(() => {
+          fill.style.width = width;
+        }, 100);
+      }
+    });
+  }
+
+  createStardustEffect(element) {
+    const rect = element.getBoundingClientRect();
+    const particleCount = 5;
+
+    for (let i = 0; i < particleCount; i++) {
+      const particle = document.createElement("div");
+      particle.className = "stardust-particle";
+      particle.style.cssText = `
+        position: fixed;
+        pointer-events: none;
+        width: 4px;
+        height: 4px;
+        background: radial-gradient(circle, rgba(100, 181, 246, 0.8), transparent);
+        border-radius: 50%;
+        z-index: 1000;
+      `;
+
+      const x = rect.left + Math.random() * rect.width;
+      const y = rect.top + Math.random() * rect.height;
+
+      particle.style.left = x + "px";
+      particle.style.top = y + "px";
+
+      document.body.appendChild(particle);
+
+      particle.animate(
+        [
+          {
+            transform: "translate(0, 0) scale(1)",
+            opacity: 1,
+          },
+          {
+            transform: `translate(${Math.random() * 50 - 25}px, ${Math.random() * 50 - 25}px) scale(0)`,
+            opacity: 0,
+          },
+        ],
+        {
+          duration: 1000,
+          easing: "cubic-bezier(0.4, 0, 0.2, 1)",
+        }
+      ).onfinish = () => particle.remove();
+    }
+  }
+
+  createStardustConnection(element) {
+    const rect = element.getBoundingClientRect();
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
+    canvas.className = "stardust-connection";
+    canvas.style.cssText = `
+      position: fixed;
+      pointer-events: none;
+      z-index: 999;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    `;
+
+    // 设置画布大小
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    document.body.appendChild(canvas);
+
+    // 创建连接动画
+    const points = [];
+    const maxPoints = 5;
+
+    const animate = () => {
+      if (points.length < maxPoints) {
+        points.push({
+          x: rect.left + Math.random() * rect.width,
+          y: rect.top + Math.random() * rect.height,
+          vx: (Math.random() - 0.5) * 2,
+          vy: (Math.random() - 0.5) * 2,
+          life: 1,
+        });
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 更新和绘制点
+      for (let i = points.length - 1; i >= 0; i--) {
+        const point = points[i];
+        point.x += point.vx;
+        point.y += point.vy;
+        point.life -= 0.02;
+
+        if (point.life <= 0) {
+          points.splice(i, 1);
+          continue;
+        }
+
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 2, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(100, 181, 246, ${point.life})`;
+        ctx.fill();
+
+        // 绘制连接线
+        for (let j = i + 1; j < points.length; j++) {
+          const other = points[j];
+          const dx = other.x - point.x;
+          const dy = other.y - point.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+
+          if (distance < 50) {
+            ctx.beginPath();
+            ctx.moveTo(point.x, point.y);
+            ctx.lineTo(other.x, other.y);
+            ctx.strokeStyle = `rgba(100, 181, 246, ${Math.min(point.life, other.life) * 0.5})`;
+            ctx.stroke();
+          }
+        }
+      }
+
+      if (points.length > 0) {
+        requestAnimationFrame(animate);
+      } else {
+        canvas.remove();
+      }
+    };
+
+    canvas.style.opacity = "1";
+    animate();
+  }
 }
 
-// 等待 DOM 加载完成后初始化
+// 初始化场景
 document.addEventListener("DOMContentLoaded", () => {
   console.log("DOM loaded, initializing SceneManager...");
-  const manager = new SceneManager();
-});
-
-// 等待 DOM 加载完成后初始化
-document.addEventListener("DOMContentLoaded", () => {
-  console.log("DOM loaded, initializing SceneManager...");
-  const manager = new SceneManager();
+  const sceneManager = new SceneManager();
 });
