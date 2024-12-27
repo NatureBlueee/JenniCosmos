@@ -399,6 +399,230 @@ class SceneManager {
         },
       },
     };
+
+    // 在所有初始化完成后，添加进度面板
+    this.initProgressPanel();
+    console.log("Progress panel initialized");
+  }
+
+  // 添加进度面板初始化方法
+  initProgressPanel() {
+    // 创建进度面板容器
+    const progressContainer = document.createElement("div");
+    progressContainer.className = "progress-container";
+    progressContainer.innerHTML = `
+      <div class="progress-panel">
+        <h2>Jenny's Blog</h2>
+        <div class="progress-subtitle">Development Progress</div>
+        <div class="progress-items">
+          <div class="progress-item">
+            <div class="progress-title">Design Phase</div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 80%"></div>
+            </div>
+          </div>
+          <div class="progress-item">
+            <div class="progress-title">Core Features</div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 65%"></div>
+            </div>
+          </div>
+          <div class="progress-item">
+            <div class="progress-title">Content Creation</div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 45%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const style = document.createElement("style");
+    style.textContent = `
+      .progress-container {
+        position: fixed;
+        left: 2rem;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 1000;
+        opacity: 0;
+        animation: fadeIn 1.5s ease-out forwards;
+      }
+      
+      @keyframes fadeIn {
+        0% { opacity: 0; transform: translateY(-50%) translateX(-30px); }
+        100% { opacity: 1; transform: translateY(-50%) translateX(0); }
+      }
+      
+      .progress-panel {
+        position: relative;
+        background: rgba(13, 13, 13, 0.45);
+        backdrop-filter: blur(12px);
+        border-radius: 16px;
+        padding: 2.5rem;
+        color: white;
+        font-family: 'Space Mono', monospace;
+        min-width: 320px;
+        overflow: hidden;
+      }
+
+      /* 添加微光边框效果 */
+      .progress-panel::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-radius: 16px;
+        padding: 1px;
+        background: linear-gradient(
+          45deg,
+          rgba(255, 255, 255, 0.1),
+          rgba(255, 255, 255, 0.05) 50%,
+          rgba(255, 255, 255, 0.15)
+        );
+        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+      }
+
+      /* 添加星尘效果 */
+      .progress-panel::after {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        right: -50%;
+        bottom: -50%;
+        background: radial-gradient(
+          circle at center,
+          rgba(255, 255, 255, 0.03) 0%,
+          transparent 70%
+        );
+        opacity: 0.5;
+        animation: starDust 20s linear infinite;
+      }
+
+      @keyframes starDust {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+      .panel-content {
+        position: relative;
+        z-index: 1;
+      }
+
+      .progress-panel h2 {
+        font-size: 1.8rem;
+        margin: 0 0 0.5rem 0;
+        font-weight: 500;
+        background: linear-gradient(45deg, #fff, #64b5f6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.1));
+        letter-spacing: 0.02em;
+      }
+
+      .progress-subtitle {
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.5);
+        margin-bottom: 2.5rem;
+        letter-spacing: 0.08em;
+        font-weight: 300;
+      }
+
+      .progress-items {
+        display: flex;
+        flex-direction: column;
+        gap: 1.8rem;
+      }
+
+      .progress-item {
+        opacity: 0;
+        animation: slideIn 0.8s ease-out forwards;
+      }
+
+      @keyframes slideIn {
+        0% { opacity: 0; transform: translateX(-15px); }
+        100% { opacity: 1; transform: translateX(0); }
+      }
+
+      .progress-item:nth-child(1) { animation-delay: 0.3s; }
+      .progress-item:nth-child(2) { animation-delay: 0.5s; }
+      .progress-item:nth-child(3) { animation-delay: 0.7s; }
+
+      .progress-title {
+        font-size: 0.9rem;
+        margin-bottom: 0.8rem;
+        color: rgba(255, 255, 255, 0.75);
+        font-weight: 300;
+        letter-spacing: 0.04em;
+      }
+
+      .progress-bar {
+        height: 3px;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 3px;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, 
+          rgba(100, 181, 246, 0.8),
+          rgba(33, 150, 243, 0.9)
+        );
+        box-shadow: 0 0 20px rgba(33, 150, 243, 0.2);
+        border-radius: 3px;
+        width: 0;
+        animation: fillProgress 2s ease-out forwards;
+        position: relative;
+      }
+
+      /* 添加流光效果 */
+      .progress-fill::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.2),
+          transparent
+        );
+        transform: translateX(-100%);
+        animation: shimmer 2s infinite;
+      }
+
+      @keyframes shimmer {
+        100% { transform: translateX(100%); }
+      }
+
+      @keyframes fillProgress {
+        0% { width: 0; }
+        100% { width: var(--progress-width); }
+      }
+    `;
+
+    document.head.appendChild(style);
+    document.body.appendChild(progressContainer);
+
+    // 延迟设置进度条宽度以触发动画
+    setTimeout(() => {
+      const fills = document.querySelectorAll(".progress-fill");
+      fills.forEach((fill) => {
+        const width = fill.style.width;
+        fill.style.setProperty("--progress-width", width);
+        fill.style.width = "0";
+      });
+    }, 100);
   }
 
   // 新增魔法粒子创建方法
