@@ -684,10 +684,6 @@ class SceneManager {
     // 设置场景背景（使用更亮的颜色以便于调试）
     this.scene.background = new THREE.Color(0x0a0a14);
 
-    // 添加环境光
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-    this.scene.add(ambientLight);
-
     // 创建容器
     this.container = document.getElementById("scene-container");
     if (!this.container) {
@@ -1289,6 +1285,158 @@ class SceneManager {
         gl_FragColor = vec4(finalColor, alpha);
       }
     `;
+  }
+
+  createStarClusters() {
+    const { clusters } = this.starfieldConfig;
+
+    // 创建星团材质
+    const clusterMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        time: { value: 0 },
+        color: { value: clusters.color },
+        opacity: { value: 0.3 },
+        scale: { value: 1.0 },
+      },
+      vertexShader: this.getClusterVertexShader(),
+      fragmentShader: this.getClusterFragmentShader(),
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+
+    // 为每个星团创建几何体和网格
+    for (let i = 0; i < clusters.count; i++) {
+      const size = THREE.MathUtils.randFloat(
+        clusters.size.min,
+        clusters.size.max
+      );
+      const density = Math.floor(
+        THREE.MathUtils.randFloat(clusters.density.min, clusters.density.max)
+      );
+
+      const geometry = new THREE.BufferGeometry();
+      const positions = new Float32Array(density * 3);
+      const scales = new Float32Array(density);
+      const opacities = new Float32Array(density);
+
+      // 生成星团中的星星
+      for (let j = 0; j < density; j++) {
+        // 使用高斯分布创建更自然的星团形状
+        const radius =
+          THREE.MathUtils.randFloat(0, size) * Math.pow(Math.random(), 2);
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(Math.random() * 2 - 1);
+
+        positions[j * 3] = radius * Math.sin(phi) * Math.cos(theta);
+        positions[j * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+        positions[j * 3 + 2] = radius * Math.cos(phi);
+
+        scales[j] = THREE.MathUtils.randFloat(0.5, 2.0);
+        opacities[j] = THREE.MathUtils.randFloat(
+          clusters.opacity.min,
+          clusters.opacity.max
+        );
+      }
+
+      geometry.setAttribute(
+        "position",
+        new THREE.BufferAttribute(positions, 3)
+      );
+      geometry.setAttribute("scale", new THREE.BufferAttribute(scales, 1));
+      geometry.setAttribute("opacity", new THREE.BufferAttribute(opacities, 1));
+
+      const cluster = new THREE.Points(geometry, clusterMaterial.clone());
+
+      // 随机位置和旋转
+      cluster.position.setFromSpherical(
+        new THREE.Spherical(
+          THREE.MathUtils.randFloat(1000, 2000),
+          Math.random() * Math.PI,
+          Math.random() * Math.PI * 2
+        )
+      );
+
+      cluster.rotation.set(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+        Math.random() * Math.PI
+      );
+
+      this.scene.add(cluster);
+      this.starClusters.push({
+        mesh: cluster,
+        rotationSpeed: THREE.MathUtils.randFloat(0.0001, 0.0003),
+        initialRotation: cluster.rotation.clone(),
+      });
+    }
+  }
+
+  // 星团顶点着色器
+  getClusterVertexShader() {
+    return `
+      uniform float time;
+      uniform float scale;
+      
+      attribute float opacity;
+      
+      varying float vOpacity;
+      
+      void main() {
+        vOpacity = opacity;
+        
+        // 添加微小的波动效果
+        vec3 pos = position;
+        float wave = sin(time * 0.5 + length(position) * 0.02) * 0.1;
+        pos += normalize(position) * wave;
+        
+        vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+        gl_Position = projectionMatrix * mvPosition;
+        
+        // 根据距离调整点大小
+        float size = scale * (1.5 - length(mvPosition.xyz) * 0.0001);
+        gl_PointSize = size * (300.0 / -mvPosition.z);
+      }
+    `;
+  }
+
+  // 星团片段着色器
+  getClusterFragmentShader() {
+    return `
+      uniform vec3 color;
+      uniform float time;
+      
+      varying float vOpacity;
+      
+      void main() {
+        vec2 center = gl_PointCoord - vec2(0.5);
+        float dist = length(center);
+        
+        // 创建柔和的光晕效果
+        float alpha = smoothstep(0.5, 0.0, dist) * vOpacity;
+        
+        // 添加微弱的闪烁效果
+        float twinkle = sin(time * 2.0 + gl_FragCoord.x * 0.1 + gl_FragCoord.y * 0.1) * 0.1 + 0.9;
+        
+        gl_FragColor = vec4(color * twinkle, alpha);
+      }
+    `;
+  }
+
+  // 更新星团动画
+  updateStarClusters(deltaTime) {
+    this.starClusters.forEach((cluster) => {
+      // 更新旋转
+      cluster.mesh.rotation.x =
+        cluster.initialRotation.x + this.time * cluster.rotationSpeed;
+      cluster.mesh.rotation.y =
+        cluster.initialRotation.y + this.time * cluster.rotationSpeed * 0.8;
+
+      // 更新着色器 uniforms
+      if (cluster.mesh.material.uniforms) {
+        cluster.mesh.material.uniforms.time.value = this.time;
+      }
+    });
   }
 }
 
