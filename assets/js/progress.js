@@ -99,6 +99,22 @@ const config = {
 
 class SceneManager {
   constructor() {
+    // 防止重复初始化
+    if (window._sceneManagerInstance) {
+      console.warn("SceneManager already initialized");
+      return window._sceneManagerInstance;
+    }
+    window._sceneManagerInstance = this;
+
+    // 初始化状态
+    this.initialized = false;
+    this.stats = {
+      fps: 60, // 设置初始 FPS 为正常值
+      frames: 0,
+      lastTime: performance.now(),
+      threshold: 30, // FPS 警告阈值
+    };
+
     // 保留其他必要的初始化
     this.scene = null;
     this.camera = null;
@@ -585,7 +601,7 @@ class SceneManager {
           0 0 15px rgba(0, 0, 0, 0.5);
       }
 
-      /* 优化连接线样式 */
+      /* ���化连接线样式 */
       .connection-line {
         position: absolute;
         height: 2px;
@@ -645,7 +661,12 @@ class SceneManager {
   }
   // 添加 animate 方法
   animate() {
-    if (!this.animationState.isAnimating) return;
+    if (!this.animationState?.isAnimating) return;
+
+    // 防止重复动画帧
+    if (this._animationFrameId) {
+      cancelAnimationFrame(this._animationFrameId);
+    }
 
     const currentTime = performance.now();
     const deltaTime = Math.min(
@@ -654,12 +675,10 @@ class SceneManager {
     );
     this.animationState.lastUpdateTime = currentTime;
 
-    // 更新场景
     this.updateScene(deltaTime);
 
-    // 确保在渲染前检查必要组件
-    if (this.scene && this.camera && this.renderer) {
-      this.renderer.render(this.scene, this.camera);
+    if (this.checkRenderComponents()) {
+      this.performRender();
     }
 
     requestAnimationFrame(this.animate.bind(this));
@@ -687,42 +706,63 @@ class SceneManager {
   }
 
   renderScene() {
+    if (this.checkRenderComponents()) {
+      this.performRender();
+    }
+  }
+
+  checkRenderComponents() {
     if (!this.scene || !this.camera || !this.renderer) {
       console.warn("Essential rendering components not initialized");
-      return;
+      return false;
     }
+    return true;
+  }
 
+  performRender() {
     try {
-      // 执行渲染
       this.renderer.render(this.scene, this.camera);
-
-      // 更新渲染统计
-      if (this.debug && this.debug.showPerformance) {
-        const info = this.renderer.info;
-        this.debug.metrics = {
-          drawCalls: info.render.calls,
-          triangles: info.render.triangles,
-          points: info.render.points,
-          lines: info.render.lines,
-          textures: info.memory ? info.memory.textures : 0,
-          geometries: info.memory ? info.memory.geometries : 0,
-          materials: info.programs ? info.programs.length : 0,
-        };
-
-        // 性能警告检查
-        this.checkPerformanceThresholds();
-      }
+      this.updateRenderStats();
+      return true;
     } catch (error) {
       console.error("Render error:", error);
+      return false;
     }
+  }
+
+  updateRenderStats() {
+    if (!this.debug?.showPerformance) return;
+
+    const now = performance.now();
+    const delta = now - this.stats.lastTime;
+
+    // 只在合适的时间间隔更新 FPS
+    if (delta >= 1000) {
+      this.stats.fps = Math.round((this.stats.frames * 1000) / delta);
+      this.stats.frames = 0;
+      this.stats.lastTime = now;
+    }
+    this.stats.frames++;
+
+    // 只在 FPS 显著低于阈值时警告
+    if (this.stats.fps > 0 && this.stats.fps < this.stats.threshold) {
+      console.warn(`Low FPS: ${this.stats.fps.toFixed(1)}`);
+    }
+
+    // 更新其他渲染统计
+    const info = this.renderer.info;
+    this.debug.metrics = {
+      drawCalls: info.render.calls,
+      triangles: info.render.triangles,
+      points: info.render.points,
+      lines: info.render.lines,
+    };
+
+    this.checkPerformanceThresholds();
   }
 
   checkPerformanceThresholds() {
     const { metrics, thresholds } = this.debug;
-
-    if (this.stats.fps < thresholds.fps) {
-      console.warn(`Low FPS: ${this.stats.fps.toFixed(1)}`);
-    }
 
     if (metrics.drawCalls > thresholds.drawCalls) {
       console.warn(`High draw calls: ${metrics.drawCalls}`);
@@ -734,13 +774,7 @@ class SceneManager {
   }
 
   initializePerformanceMonitoring() {
-    // 初始化性能监控状态
-    this.stats = {
-      fps: 0,
-      frameTime: 0,
-      lastTime: performance.now(),
-      frames: 0,
-    };
+    if (this.performanceInitialized) return;
 
     // 初始化调试配置
     this.debug = {
@@ -981,7 +1015,7 @@ class SceneManager {
     this.camera.position.set(0, 0, 1500);
     this.camera.lookAt(0, 0, 0);
 
-    // 简化相机动画状态，只保留实际使用的参数
+    // 简化相机��画状态，只保留实际使用的参数
     this.cameraState = {
       // 漂浮运动参数
       drift: {
@@ -1109,21 +1143,19 @@ class SceneManager {
     });
   }
 
-  getNebulaVertexShader() {
-    return `
+  // 提取着色器常量
+  static NEBULA_VERTEX_SHADER = `
       varying vec2 vUv;
       varying vec3 vPosition;
       
       void main() {
-        vUv = uv;
-        vPosition = position;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          vUv = uv;
+          vPosition = position;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }
-    `;
-  }
+  `;
 
-  getNebulaFragmentShader() {
-    return `
+  static NEBULA_FRAGMENT_SHADER = `
       uniform vec3 color;
       uniform float opacity;
       uniform float time;
@@ -1133,96 +1165,104 @@ class SceneManager {
       
       // 优化的噪声函数
       float hash(float n) {
-        return fract(sin(n) * 43758.5453123);
+          return fract(sin(n) * 43758.5453123);
       }
       
       float noise(vec2 p) {
-        vec2 i = floor(p);
-        vec2 f = fract(p);
-        f = f * f * (3.0 - 2.0 * f);
-        float n = i.x + i.y * 157.0;
-        return mix(
-          mix(hash(n), hash(n + 1.0), f.x),
-          mix(hash(n + 157.0), hash(n + 158.0), f.x),
-          f.y
-        );
+          vec2 i = floor(p);
+          vec2 f = fract(p);
+          f = f * f * (3.0 - 2.0 * f);
+          float n = i.x + i.y * 157.0;
+          return mix(
+              mix(hash(n), hash(n + 1.0), f.x),
+              mix(hash(n + 157.0), hash(n + 158.0), f.x),
+              f.y
+          );
       }
       
       float fbm(vec2 p, float speed) {
-        float sum = 0.0;
-        float amp = 0.5;
-        float freq = 1.0;
-        vec2 shift = vec2(time * speed);
-        
-        for(int i = 0; i < 3; i++) {
-          sum += noise(p * freq + shift) * amp;
-          freq *= 2.0;
-          amp *= 0.5;
-          shift *= 1.3;
-        }
-        return sum;
+          float sum = 0.0;
+          float amp = 0.5;
+          float freq = 1.0;
+          vec2 shift = vec2(time * speed);
+          
+          for(int i = 0; i < 3; i++) {
+              sum += noise(p * freq + shift) * amp;
+              freq *= 2.0;
+              amp *= 0.5;
+              shift *= 1.3;
+          }
+          return sum;
       }
       
       void main() {
-        vec2 uv = vUv * 2.0 - 1.0;
-        float angle = -0.2;
-        vec2 rotatedUV = vec2(
-          uv.x * cos(angle) - uv.y * sin(angle),
-          uv.x * sin(angle) + uv.y * cos(angle)
-        );
-        
-        // 创建多层结构
-        // 1. 深层暗云
-        float darkCloud = fbm(rotatedUV * 1.5 - time * 0.02, 0.05);
-        
-        // 2. ��要气态结构
-        float mainStructure = fbm(rotatedUV * 2.0 + time * 0.05, 0.1);
-        float pillar = smoothstep(0.3, -0.3, 
-          abs(rotatedUV.x + sin(rotatedUV.y * 2.0) * 0.15) - 
-          0.2 + mainStructure * 0.3
-        );
-        pillar *= smoothstep(-1.0, -0.5, rotatedUV.y) * 
-                  smoothstep(1.2, -0.2, rotatedUV.y);
-        
-        // 3. 明亮的电离区
-        float brightRegion = fbm(rotatedUV * 3.0 + time * 0.1, 0.15);
-        float ionized = smoothstep(0.4, 0.0, 
-          length(rotatedUV - vec2(0.0, 0.3)) - 0.3 + brightRegion * 0.2
-        );
-        
-        // 4. 细小的丝状结构
-        float filaments = fbm(rotatedUV * 4.0 + time * 0.08, 0.12);
-        
-        // 组合所有层次
-        float structure = pillar;
-        structure = mix(structure, structure * (1.0 + darkCloud), 0.5);
-        structure = max(structure, ionized * 0.7);
-        structure += filaments * 0.15 * structure;
-        
-        // 密度变化
-        float density = fbm(rotatedUV * 2.5 - time * 0.03, 0.07);
-        structure *= mix(0.6, 1.0, density);
-        
-        // 边缘处理
-        float edge = smoothstep(1.2, 0.0, length(rotatedUV));
-        float alpha = structure * edge * opacity;
-        
-        // 颜色变化
-        vec3 finalColor = color;
-        // 添加深度色彩变化
-        finalColor += vec3(
-          density * 0.1,
-          brightRegion * 0.15,
-          filaments * 0.05
-        );
-        
-        // 暗部处理
-        float darkness = smoothstep(0.2, 0.0, structure);
-        finalColor *= mix(1.0, 0.7, darkness);
-        
-        gl_FragColor = vec4(finalColor, alpha);
+          vec2 uv = vUv * 2.0 - 1.0;
+          float angle = -0.2;
+          vec2 rotatedUV = vec2(
+              uv.x * cos(angle) - uv.y * sin(angle),
+              uv.x * sin(angle) + uv.y * cos(angle)
+          );
+          
+          // 创建多层结构
+          // 1. 深层暗云
+          float darkCloud = fbm(rotatedUV * 1.5 - time * 0.02, 0.05);
+          
+          // 2. 要气态结构
+          float mainStructure = fbm(rotatedUV * 2.0 + time * 0.05, 0.1);
+          float pillar = smoothstep(0.3, -0.3, 
+              abs(rotatedUV.x + sin(rotatedUV.y * 2.0) * 0.15) - 
+              0.2 + mainStructure * 0.3
+          );
+          pillar *= smoothstep(-1.0, -0.5, rotatedUV.y) * 
+                    smoothstep(1.2, -0.2, rotatedUV.y);
+          
+          // 3. 明亮的电离区
+          float brightRegion = fbm(rotatedUV * 3.0 + time * 0.1, 0.15);
+          float ionized = smoothstep(0.4, 0.0, 
+              length(rotatedUV - vec2(0.0, 0.3)) - 0.3 + brightRegion * 0.2
+          );
+          
+          // 4. 细小的丝状结构
+          float filaments = fbm(rotatedUV * 4.0 + time * 0.08, 0.12);
+          
+          // 组合所有层次
+          float structure = pillar;
+          structure = mix(structure, structure * (1.0 + darkCloud), 0.5);
+          structure = max(structure, ionized * 0.7);
+          structure += filaments * 0.15 * structure;
+          
+          // 密度变化
+          float density = fbm(rotatedUV * 2.5 - time * 0.03, 0.07);
+          structure *= mix(0.6, 1.0, density);
+          
+          // 边缘处理
+          float edge = smoothstep(1.2, 0.0, length(rotatedUV));
+          float alpha = structure * edge * opacity;
+          
+          // 颜色变化
+          vec3 finalColor = color;
+          // 添加深度色彩变化
+          finalColor += vec3(
+              density * 0.1,
+              brightRegion * 0.15,
+              filaments * 0.05
+          );
+          
+          // 暗部处理
+          float darkness = smoothstep(0.2, 0.0, structure);
+          finalColor *= mix(1.0, 0.7, darkness);
+          
+          gl_FragColor = vec4(finalColor, alpha);
       }
-    `;
+  `;
+
+  // 修改方法以使用静态常量
+  getNebulaVertexShader() {
+    return this.constructor.NEBULA_VERTEX_SHADER;
+  }
+
+  getNebulaFragmentShader() {
+    return this.constructor.NEBULA_FRAGMENT_SHADER;
   }
 
   createStarfield() {
@@ -1497,7 +1537,7 @@ class SceneManager {
     return noiseValue;
   }
 
-  // 更新星星着色器
+  // 更新星星着���器
   getStarVertexShader() {
     return `
       uniform float time;
@@ -1698,7 +1738,7 @@ class SceneManager {
         // 创建柔和的光晕效果
         float alpha = smoothstep(0.5, 0.0, dist) * vOpacity;
         
-        // 添加微弱的闪烁效���
+        // 添加微弱的闪烁效�����
         float twinkle = sin(time * 2.0 + gl_FragCoord.x * 0.1 + gl_FragCoord.y * 0.1) * 0.1 + 0.9;
         
         gl_FragColor = vec4(color * twinkle, alpha);
@@ -1761,7 +1801,7 @@ class SceneManager {
         float alpha = smoothstep(1.0, 0.0, dist) * opacity;
         alpha *= 1.0 + noise * 0.5 + noise2 * 0.3 + spiral * 0.2;
         
-        // 颜色变化
+        // 颜���变化
         vec3 finalColor = color;
         finalColor += noise * 0.2 + spiral * 0.1;
         finalColor *= 1.0 + sin(time * 0.5) * 0.1; // 添加脉冲效果
