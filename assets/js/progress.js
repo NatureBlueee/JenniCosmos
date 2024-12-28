@@ -1491,11 +1491,76 @@ class SceneManager {
   }
 
   handleMouseMove(event) {
-    if (!this.mouseState) return;
+    // 确保 noise 已经初始化
+    if (!this.noise) {
+      this.noise = {
+        time: 0,
+        simplex: createNoise2D(),
+        flow: {
+          speed: 0.02, // 降低速度
+          scale: 0.015, // 降低缩放以获得更平滑的噪声
+          octaves: 3, // 增加倍频以获得更多细节
+          persistence: 0.25, // 降低持续度使变化更温和
+          lacunarity: 1.35, // 调整空间频率
+          zScale: 0.15, // 降低Z轴影响
+        },
+      };
+    }
 
-    // 将鼠标位置归一化到 -1 到 1 的范围
-    this.mouseState.target.x = (event.clientX / window.innerWidth) * 2 - 1;
-    this.mouseState.target.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    // 计算归一化的鼠标位置
+    const mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+    const mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    // 使用 noise 创建更平滑的偏移
+    const time = performance.now() * 0.001;
+    const noiseX = this.noise.simplex(
+      mouseX * this.noise.flow.scale + time * this.noise.flow.speed,
+      time * this.noise.flow.speed * 0.4
+    );
+    const noiseY = this.noise.simplex(
+      mouseY * this.noise.flow.scale + time * this.noise.flow.speed,
+      time * this.noise.flow.speed * 0.5 + 100 // 添加偏移避免与X轴相同的模式
+    );
+
+    // 应用更柔和的相机移动
+    if (this.camera) {
+      // 降低移动速度
+      const positionSpeed =
+        this.config.scene.camera.movement.positionSpeed * 0.4;
+      const targetX = noiseX * positionSpeed;
+      const targetY = noiseY * positionSpeed;
+
+      // 增加平滑插值强度
+      const positionLerp = 0.015; // 降低数值使移动更平滑
+      this.camera.position.x +=
+        (targetX - this.camera.position.x) * positionLerp;
+      this.camera.position.y +=
+        (targetY - this.camera.position.y) * positionLerp;
+
+      // 更平滑的旋转效果
+      const rotationSpeed =
+        this.config.scene.camera.movement.rotationSpeed * 0.3;
+      const rotationLerp = 0.015; // 降低数值使旋转更平滑
+      this.camera.rotation.x +=
+        (targetY * rotationSpeed - this.camera.rotation.x) * rotationLerp;
+      this.camera.rotation.y +=
+        (targetX * rotationSpeed - this.camera.rotation.y) * rotationLerp;
+
+      // 添加轻微的Z轴呼吸效果
+      const breathingSpeed = 0.001;
+      const breathingAmount = 0.1;
+      this.camera.position.z +=
+        Math.sin(time * breathingSpeed) * breathingAmount;
+    }
+
+    // 更新 mouseState，使用更温和的阻尼值
+    this.mouseState.position.x = mouseX;
+    this.mouseState.position.y = mouseY;
+    const mouseDamping = 0.08; // 增加阻尼使移动更平滑
+    this.mouseState.target.x +=
+      (mouseX - this.mouseState.target.x) * mouseDamping;
+    this.mouseState.target.y +=
+      (mouseY - this.mouseState.target.y) * mouseDamping;
   }
 
   // 提取触摸事件处理到单独的方法
@@ -2619,7 +2684,7 @@ function createEnergyConnections() {
   });
 }
 
-// 确保在DOM加载完成和窗口调整时创建连接
+// 确保在DOM加载完成和窗口调整时创���连接
 document.addEventListener("DOMContentLoaded", () => {
   setTimeout(createEnergyConnections, 1000);
 });
