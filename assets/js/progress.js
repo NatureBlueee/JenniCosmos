@@ -932,27 +932,41 @@ class SceneManager {
 
   setupScene() {
     this.scene = new THREE.Scene();
-    this.scene.background = this.config.scene.background;
+    // 使用默认背景色，因为之前我们移除了 config
+    this.scene.background = new THREE.Color(0x000814);
 
-    // 创建容器
-    this.container = document.getElementById("scene-container");
-    if (!this.container) {
-      console.warn("Scene container not found, creating one");
-      this.container = document.createElement("div");
-      this.container.id = "scene-container";
-      this.container.style.width = "100vw";
-      this.container.style.height = "100vh";
-      this.container.style.position = "fixed";
-      this.container.style.top = "0";
-      this.container.style.left = "0";
-      this.container.style.backgroundColor = "#000"; // 添加背景色
-      document.body.appendChild(this.container);
-    }
+    // 获取或创建容器
+    this.container = this.getOrCreateContainer();
 
+    // 设置尺寸
     this.width = this.container.clientWidth;
     this.height = this.container.clientHeight;
 
-    console.log("Scene container size:", this.width, this.height);
+    console.log("Scene initialized:", {
+      dimensions: { width: this.width, height: this.height },
+    });
+  }
+
+  // 提取容器创建逻辑到单独的方法
+  getOrCreateContainer() {
+    let container = document.getElementById("scene-container");
+
+    if (!container) {
+      console.warn("Scene container not found, creating one");
+      container = document.createElement("div");
+      container.id = "scene-container";
+      Object.assign(container.style, {
+        width: "100vw",
+        height: "100vh",
+        position: "fixed",
+        top: "0",
+        left: "0",
+        backgroundColor: "#000",
+      });
+      document.body.appendChild(container);
+    }
+
+    return container;
   }
 
   setupCamera() {
