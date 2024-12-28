@@ -123,6 +123,12 @@ class SceneManager {
     this.height = 0;
     // ... 其他属性 ...
 
+    // 添加核心效果的状态追踪
+    this.coreState = {
+      isEnhanced: false,
+      effects: null,
+    };
+
     this.init();
   }
 
@@ -181,10 +187,11 @@ class SceneManager {
     this.setupRenderer();
     console.log("Renderer setup complete");
 
-    // 初始化宇宙效果
+    // 初始���宇宙效果
     this.initializeCosmicEffects();
     console.log("Cosmic effects initialized");
-
+    // 增强核心星云
+    this.enhanceCoreNebula();
     // 设置星空
     this.createStarfield();
     console.log("Stars setup complete");
@@ -520,7 +527,7 @@ class SceneManager {
         z-index: 2;
       }
 
-      /* 增强卡片光晕效果 */
+      /* 增强卡片光���效果 */
       .card-glow {
         position: absolute;
         inset: -50%;
@@ -540,7 +547,7 @@ class SceneManager {
         position: relative;
       }
 
-      /* 优化连接线效果 */
+      /* 优化��接线效果 */
       .milestone-node::before {
         content: '';
         position: absolute;
@@ -680,7 +687,13 @@ class SceneManager {
     if (this.checkRenderComponents()) {
       this.performRender();
     }
-
+    // 添加核心脉动更新
+    if (this.corePulseAnimation) {
+      this.corePulseAnimation.update(deltaTime);
+    }
+    if (this.updateCallbacks) {
+      this.updateCallbacks.forEach((callback) => callback(deltaTime));
+    }
     requestAnimationFrame(this.animate.bind(this));
   }
 
@@ -1116,7 +1129,7 @@ class SceneManager {
       powerPreference: "high-performance",
     });
 
-    // 设置渲染器尺寸和像素比
+    // 设�����渲染器尺寸和像素比
     this.renderer.setSize(this.width, this.height);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
@@ -1222,7 +1235,7 @@ class SceneManager {
               length(rotatedUV - vec2(0.0, 0.3)) - 0.3 + brightRegion * 0.2
           );
           
-          // 4. 细小的丝状结构
+          // 4. 细小的丝状���构
           float filaments = fbm(rotatedUV * 4.0 + time * 0.08, 0.12);
           
           // 组合所有层次
@@ -1447,7 +1460,7 @@ class SceneManager {
   }
 
   setupPerformanceMonitoring() {
-    // 创建性能监控面板
+    // 创建性���监控面板
     const performancePanel = document.createElement("div");
     performancePanel.style.cssText = `
       position: fixed;
@@ -1801,7 +1814,7 @@ class SceneManager {
         float alpha = smoothstep(1.0, 0.0, dist) * opacity;
         alpha *= 1.0 + noise * 0.5 + noise2 * 0.3 + spiral * 0.2;
         
-        // 颜���变化
+        // 颜变化
         vec3 finalColor = color;
         finalColor += noise * 0.2 + spiral * 0.1;
         finalColor *= 1.0 + sin(time * 0.5) * 0.1; // 添加脉冲效果
@@ -1828,7 +1841,7 @@ class SceneManager {
         dustClouds.opacity.max
       );
 
-      // 随机选择颜色
+      // ���机选择颜色
       const colorSet = Math.random() > 0.5 ? "primary" : "secondary";
       const colors = this.nebulaEnhancement.colorVariation[colorSet];
       const color = colors[Math.floor(Math.random() * colors.length)];
@@ -2083,6 +2096,311 @@ class SceneManager {
 
     canvas.style.opacity = "1";
     animate();
+  }
+
+  // 在 initializeCosmicEffects 方法后添加新方法
+  async enhanceCoreNebula() {
+    if (this.coreState?.isEnhanced) {
+      console.log("Core already enhanced, skipping...");
+      return;
+    }
+
+    console.log("Starting core enhancement...");
+
+    // 初始化核心状态
+    this.coreState = {
+      isEnhanced: false,
+      isHovered: false,
+      originalColor: this.nebulae?.[0]?.material.uniforms.color.value.clone(),
+      originalIntensity:
+        this.nebulae?.[0]?.material.uniforms.intensity?.value || 1.0,
+    };
+
+    // 添加调试辅助器
+    const debugHelper = {
+      element: null,
+      init: () => {
+        const helper = document.createElement("div");
+        helper.style.cssText = `
+          position: fixed;
+          width: 20px;
+          height: 20px;
+          border: 2px solid rgba(147, 51, 234, 0.5);
+          border-radius: 50%;
+          pointer-events: none;
+          transform: translate(-50%, -50%);
+          z-index: 9999;
+          transition: background-color 0.3s;
+        `;
+        document.body.appendChild(helper);
+        debugHelper.element = helper;
+        console.log("Debug helper initialized");
+      },
+      update: (x, y, isNearCore) => {
+        if (debugHelper.element) {
+          debugHelper.element.style.left = `${x}px`;
+          debugHelper.element.style.top = `${y}px`;
+          debugHelper.element.style.backgroundColor = isNearCore
+            ? "rgba(147, 51, 234, 0.3)"
+            : "transparent";
+          debugHelper.element.style.borderColor = isNearCore
+            ? "rgba(147, 51, 234, 0.8)"
+            : "rgba(147, 51, 234, 0.5)";
+        }
+      },
+    };
+
+    // 初始化调试辅助器
+    debugHelper.init();
+
+    // 修改鼠标移动事件处理
+    window.addEventListener("mousemove", (event) => {
+      // 保持现有的相机和噪声效果
+      if (this.handleMouseMove) {
+        this.handleMouseMove(event);
+      }
+
+      // 使用已存在的 mouseState
+      this.mouseState.position.x = (event.clientX / window.innerWidth) * 2 - 1;
+      this.mouseState.position.y =
+        -(event.clientY / window.innerHeight) * 2 + 1;
+
+      // 检查与星云的交互
+      if (this.nebulae && this.nebulae[0]) {
+        const nebula = this.nebulae[0];
+
+        // 计算鼠标到中心的距离
+        const centerScreenPos = new THREE.Vector3(0, 0, -500).project(
+          this.camera
+        );
+
+        // 转换中心点到屏幕坐标
+        const centerX = ((centerScreenPos.x + 1) * window.innerWidth) / 2;
+        const centerY = ((-centerScreenPos.y + 1) * window.innerHeight) / 2;
+
+        // 计算实际距离
+        const mouseDistance = Math.sqrt(
+          Math.pow(event.clientX - centerX, 2) +
+            Math.pow(event.clientY - centerY, 2)
+        );
+
+        // 使用更宽松的检测条件
+        const isNearCore = mouseDistance < window.innerWidth * 0.15; // 调整检测范围为屏幕宽度的15%
+
+        // 更新调试辅助器
+        debugHelper.update(event.clientX, event.clientY, isNearCore);
+
+        // 添加中心点指示器（仅调试用）
+        if (!document.querySelector(".core-center-debug")) {
+          const centerIndicator = document.createElement("div");
+          centerIndicator.className = "core-center-debug";
+          centerIndicator.style.cssText = `
+            position: fixed;
+            left: ${centerX}px;
+            top: ${centerY}px;
+            width: 10px;
+            height: 10px;
+            background: rgba(255, 0, 0, 0.5);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9999;
+          `;
+          document.body.appendChild(centerIndicator);
+        }
+
+        if (isNearCore) {
+          // 在核心区域
+          if (!this.coreState.isHovered) {
+            this.coreState.isHovered = true;
+            console.log("Entered core area at distance:", mouseDistance);
+
+            // 增强核心效果
+            if (nebula.material.uniforms) {
+              // 增加亮度和改变颜色
+              const targetIntensity = this.coreState.originalIntensity * 2.5;
+              const targetColor = new THREE.Color(0xffd700); // 金色
+
+              this.transitionNebulaEffect(nebula, {
+                intensity: targetIntensity,
+                color: targetColor,
+                duration: 0.3,
+              });
+            }
+          }
+        } else if (this.coreState.isHovered) {
+          this.coreState.isHovered = false;
+          console.log("Left core area");
+
+          // 恢复原始效果
+          if (nebula.material.uniforms) {
+            this.transitionNebulaEffect(nebula, {
+              intensity: this.coreState.originalIntensity,
+              color: this.coreState.originalColor,
+              duration: 0.3,
+            });
+          }
+        }
+      }
+    });
+
+    // 添加清理方法
+    const cleanup = () => {
+      const helper = document.querySelector(".core-center-debug");
+      if (helper) helper.remove();
+      if (debugHelper.element) debugHelper.element.remove();
+    };
+
+    // 在需要时清理（比如场景切换时）
+    this.cleanupCallbacks = this.cleanupCallbacks || [];
+    this.cleanupCallbacks.push(cleanup);
+
+    // 修改 transitionNebulaEffect 方法
+    this.transitionNebulaEffect = (nebula, { intensity, color, duration }) => {
+      // 添加安全检查
+      if (!nebula?.material?.uniforms) {
+        console.warn("Nebula material or uniforms not initialized");
+        return;
+      }
+
+      const startIntensity = nebula.material.uniforms.intensity?.value || 1.0;
+      const startColor =
+        nebula.material.uniforms.color?.value?.clone() ||
+        new THREE.Color(0xffffff);
+      const startTime = performance.now();
+
+      const updateEffect = () => {
+        const currentTime = performance.now();
+        const progress = Math.min(
+          (currentTime - startTime) / (duration * 1000),
+          1
+        );
+        const eased = this.easeInOutCubic(progress);
+
+        // 安全地更新值
+        if (nebula.material.uniforms.intensity) {
+          nebula.material.uniforms.intensity.value =
+            startIntensity + (intensity - startIntensity) * eased;
+        }
+
+        if (nebula.material.uniforms.color) {
+          nebula.material.uniforms.color.value.lerp(color, eased);
+        }
+
+        if (progress < 1) {
+          requestAnimationFrame(updateEffect);
+        }
+      };
+
+      requestAnimationFrame(updateEffect);
+    };
+
+    // 缓动函数
+    this.easeInOutCubic = (t) => {
+      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    };
+
+    this.coreState.isEnhanced = true;
+    console.log("Core nebula enhancement complete");
+
+    // 添加交互提示
+    this.addCoreInteractionHint();
+  }
+
+  // 添加交互提示方法
+  addCoreInteractionHint() {
+    const existingHint = document.querySelector(".core-hint");
+    if (existingHint) return;
+
+    const hintContainer = document.createElement("div");
+    hintContainer.className = "core-hint";
+    hintContainer.innerHTML = `
+      <div class="hint-content opacity-0 transform translate-y-4 transition-all duration-1000">
+        <p class="text-lg text-white/80 font-cormorant">
+          Click the nebula core to begin the journey
+        </p>
+      </div>
+    `;
+
+    // 添加样式
+    if (!document.querySelector("#core-hint-style")) {
+      const style = document.createElement("style");
+      style.id = "core-hint-style";
+      style.textContent = `
+        .core-hint {
+          position: fixed;
+          width: 30px;
+          height: 30px;
+          border: 2px solid rgba(255, 255, 255, 0.5);
+          border-radius: 50%;
+          pointer-events: none;
+          transform: translate(-50%, -50%);
+          z-index: 9999;
+          transition: all 0.3s ease;
+        }
+
+        .hint-content {
+          background: rgba(147, 51, 234, 0.1);
+          backdrop-filter: blur(8px);
+          padding: 1rem 2rem;
+          border-radius: 1rem;
+          border: 1px solid rgba(147, 51, 234, 0.2);
+          box-shadow: 0 0 20px rgba(147, 51, 234, 0.2);
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    document.body.appendChild(hintContainer);
+
+    // 延迟显示提示
+    setTimeout(() => {
+      const hintContent = hintContainer.querySelector(".hint-content");
+      if (hintContent) {
+        hintContent.classList.remove("opacity-0", "translate-y-4");
+        console.log("Core interaction hint displayed");
+      }
+    }, 1000);
+  }
+
+  // 在 SceneManager 类中添加
+  initializeCoreState() {
+    // 初始化核心状态管理
+    this.coreState = {
+      isEnhanced: false,
+      isHovered: false,
+      position: new THREE.Vector3(0, 0, -500),
+      hoverRadius: window.innerWidth * 0.15,
+      // 保存原始参数以便恢复
+      original: {
+        color: this.nebulae?.[0]?.material.uniforms.color.value.clone(),
+        intensity: this.nebulae?.[0]?.material.uniforms.intensity?.value || 1.0,
+      },
+    };
+
+    // 添加简单的调试辅助
+    if (this.debug.enabled) {
+      this.addCoreDebugHelper();
+    }
+
+    console.log("Core state initialized:", this.coreState);
+  }
+
+  // 添加调试辅助方法
+  addCoreDebugHelper() {
+    const helper = document.createElement("div");
+    helper.className = "core-debug-helper";
+    helper.style.cssText = `
+      position: fixed;
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(255, 255, 255, 0.5);
+      border-radius: 50%;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      z-index: 9999;
+    `;
+    document.body.appendChild(helper);
+    this.coreDebugHelper = helper;
   }
 }
 
