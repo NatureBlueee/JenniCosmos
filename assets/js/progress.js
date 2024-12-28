@@ -1363,27 +1363,15 @@ class SceneManager {
     window.addEventListener("mousemove", this.handleMouseMove.bind(this));
 
     // 添加触摸事件支持
-    window.addEventListener(
-      "touchmove",
-      (e) => {
-        e.preventDefault();
-        const touch = e.touches[0];
-        this.handleMouseMove({
-          clientX: touch.clientX,
-          clientY: touch.clientY,
-        });
-      },
-      { passive: false }
-    );
+    window.addEventListener("touchmove", this.handleTouchMove.bind(this), {
+      passive: false,
+    });
 
     // 处理可见性变化
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden) {
-        this.pause();
-      } else {
-        this.resume();
-      }
-    });
+    document.addEventListener(
+      "visibilitychange",
+      this.handleVisibilityChange.bind(this)
+    );
 
     console.log("Event listeners bound");
   }
@@ -1455,6 +1443,25 @@ class SceneManager {
     // 将鼠标位置归一化到 -1 到 1 的范围
     this.mouseState.target.x = (event.clientX / window.innerWidth) * 2 - 1;
     this.mouseState.target.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  }
+
+  // 提取触摸事件处理到单独的方法
+  handleTouchMove(e) {
+    e.preventDefault();
+    const touch = e.touches[0];
+    this.handleMouseMove({
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+    });
+  }
+
+  // 提取可见性变化处理到单独的方法
+  handleVisibilityChange() {
+    if (document.hidden) {
+      this.pause();
+    } else {
+      this.resume();
+    }
   }
 
   // 修改为3D流体效果计算
