@@ -74,17 +74,6 @@ const config = {
       opacity: { min: 0.2, max: 0.4 },
     },
   },
-  meteor: {
-    count: 5,
-    minSpeed: 0.15,
-    maxSpeed: 0.3,
-    minSize: 0.3,
-    maxSize: 0.6,
-    color: new THREE.Color(0xffffff).multiplyScalar(0.8),
-    trailColor: new THREE.Color(0x4169e1).multiplyScalar(0.6),
-    trailLength: 0.75,
-    spawnInterval: { min: 4, max: 8 },
-  },
   nebula: {
     count: 1,
     size: {
@@ -277,8 +266,7 @@ class SceneManager {
     console.log("Stars setup complete");
 
     // 初始化流星
-    this.initializeMeteors();
-    console.log("Meteors initialized");
+    console.log("Meteors initialization skipped"); // 添加日志便于调试
 
     // 绑定事件
     this.bindEvents();
@@ -385,7 +373,7 @@ class SceneManager {
     this.savedNebulaParams = params; // 保存在内存中
 
     // 格式化输出到控制台
-    console.log("✨ 当前场景参数：");
+    console.log("✨ 当前场���参数：");
     console.log(JSON.stringify(params, null, 2));
   }
 
@@ -1766,30 +1754,6 @@ class SceneManager {
     console.log("Starfield created with", starCount, "stars");
   }
 
-  initializeMeteors() {
-    // 现在可以正确引用 MeteorSystem 类
-    this.meteorSystem = new MeteorSystem(this.scene, config);
-
-    this.meteorConfig = {
-      maxMeteors: config.meteor.count,
-      spawnInterval: {
-        min: config.meteor.spawnInterval.min * 1000,
-        max: config.meteor.spawnInterval.max * 1000,
-      },
-      speed: {
-        min: config.meteor.minSpeed,
-        max: config.meteor.maxSpeed,
-      },
-      size: {
-        min: config.meteor.minSize,
-        max: config.meteor.maxSize,
-      },
-      color: config.meteor.color,
-      trailColor: config.meteor.trailColor,
-      trailLength: config.meteor.trailLength,
-    };
-  }
-
   bindEvents() {
     // 处理窗口大小变化
     window.addEventListener("resize", this.handleResize.bind(this));
@@ -1920,7 +1884,6 @@ class SceneManager {
     setInterval(updateDebug, 100);
     document.body.appendChild(debugContainer);
   }
-
   // 修�����为3D流体效果计算
   calculateFlowEffect(x, y, time) {
     const { flow } = this.noise;
