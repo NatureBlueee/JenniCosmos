@@ -27,60 +27,6 @@
     <!-- GSAP -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     
-    <!-- 流星着色器 -->
-    <script type="x-shader/x-vertex" id="meteor-vertex">
-        uniform float time;
-        uniform float pixelRatio;
-        
-        attribute vec3 velocity;
-        attribute float size;
-        
-        varying float vProgress;
-        
-        void main() {
-            vProgress = position.y;
-            
-            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-            gl_Position = projectionMatrix * mvPosition;
-            
-            gl_PointSize = size * pixelRatio * (1.0 - vProgress * 0.5);
-        }
-    </script>
-    
-    <script type="x-shader/x-fragment" id="meteor-fragment">
-        uniform vec3 color;
-        uniform vec3 trailColor;
-        uniform float trailLength;
-        
-        varying float vProgress;
-        
-        void main() {
-            // 使用极坐标创建更自然的光晕
-            vec2 center = gl_PointCoord - vec2(0.5);
-            float dist = length(center);
-            
-            // 软化边缘
-            float softEdge = 1.0 - smoothstep(0.0, 0.5, dist);
-            
-            // 创建核心光晕
-            float core = exp(-2.0 * dist);
-            
-            // 外部光晕
-            float outerGlow = exp(-1.0 * dist);
-            
-            // 合并效果
-            float alpha = mix(outerGlow * 0.3, core, softEdge) * (1.0 - vProgress);
-            
-            // 颜色过渡
-            vec3 finalColor = mix(color, trailColor, vProgress * trailLength);
-            
-            // 确保完全透明的部分被裁剪掉
-            if (alpha < 0.01) discard;
-            
-            gl_FragColor = vec4(finalColor, alpha * 0.5);
-        }
-    </script>
-
     <style>
         .font-cormorant {
             font-family: 'Cormorant Garamond', serif;

@@ -97,112 +97,20 @@ const config = {
   },
 };
 
-// 1. 首先定义 Meteor 类
-class Meteor {
-  constructor(scene, config) {
-    this.scene = scene;
-    this.config = config;
-    this.initialize();
-  }
-
-  initialize() {
-    // 初始化流星的属性
-    this.position = new THREE.Vector3();
-    this.velocity = new THREE.Vector3();
-    this.trail = [];
-    this.isActive = true;
-
-    // 设置初始位置和方向
-    this.resetPosition();
-  }
-
-  resetPosition() {
-    // 随机生成流星的起始位置
-    const theta = Math.random() * Math.PI * 2;
-    const phi = Math.acos(Math.random() * 2 - 1);
-    const radius = this.config.meteor.spawnRadius || 1000;
-
-    this.position.set(
-      radius * Math.sin(phi) * Math.cos(theta),
-      radius * Math.sin(phi) * Math.sin(theta),
-      radius * Math.cos(phi)
-    );
-
-    // 设置速度方向
-    this.velocity
-      .copy(this.position)
-      .normalize()
-      .multiplyScalar(
-        -THREE.MathUtils.randFloat(
-          this.config.meteor.minSpeed,
-          this.config.meteor.maxSpeed
-        )
-      );
-  }
-
-  update(deltaTime) {
-    if (!this.isActive) return true;
-
-    // 更新位置
-    this.position.add(this.velocity.clone().multiplyScalar(deltaTime));
-
-    // 更新拖尾效果
-    this.updateTrail();
-
-    // 检查是否超出边界
-    if (this.position.length() < 100) {
-      this.isActive = false;
-      return true;
-    }
-
-    return false;
-  }
-
-  updateTrail() {
-    // 实现拖尾效果的逻辑
-    // ...
-  }
-}
-
-// 2. 然后定义 MeteorSystem 类
-class MeteorSystem {
-  constructor(scene, config) {}
-
-  getRandomInterval() {
-    const { min, max } = this.config.meteor.spawnInterval;
-    return (Math.random() * (max - min) + min) * 1000;
-  }
-
-  update(deltaTime) {
-    if (!this.isActive) return;
-
-    // 更新现有流星
-    for (let i = this.meteors.length - 1; i >= 0; i--) {
-      if (this.meteors[i].update(deltaTime)) {
-        this.meteors.splice(i, 1);
-      }
-    }
-
-    // 检查是否需要生成新流星
-    const currentTime = Date.now();
-    if (
-      currentTime - this.lastSpawnTime > this.nextSpawnInterval &&
-      this.meteors.length < this.config.meteor.count
-    ) {
-      this.spawnMeteor();
-      this.lastSpawnTime = currentTime;
-      this.nextSpawnInterval = this.getRandomInterval();
-    }
-  }
-
-  spawnMeteor() {
-    const meteor = new Meteor(this.scene, this.config);
-    this.meteors.push(meteor);
-  }
-}
-
 class SceneManager {
   constructor() {
+    // 保留其他必要的初始化
+    this.scene = null;
+    this.camera = null;
+    this.renderer = null;
+    this.width = 0;
+    this.height = 0;
+    // ... 其他属性 ...
+
+    this.init();
+  }
+
+  init() {
     // 保存全局配置
     this.config = config;
 
@@ -283,152 +191,14 @@ class SceneManager {
       this.createStarfield();
       this.createStarClusters();
       // 添加魔法粒子初始化
-      this.createMagicalParticles();
-    };
-
-    // 添加魔法粒子配置
-    this.magicalParticles = {
-      enabled: true,
-      particles: [],
-      config: {
-        count: 50,
-        colors: [
-          new THREE.Color(0xffd700).multiplyScalar(0.6), // 柔和的金色
-          new THREE.Color(0x9400d3).multiplyScalar(0.4), // 柔和的紫色
-          new THREE.Color(0x00ffff).multiplyScalar(0.5), // 柔和的青色
-        ],
-        size: {
-          min: 2,
-          max: 4,
-        },
-        speed: {
-          min: 0.2,
-          max: 0.5,
-        },
-        trail: {
-          length: 20,
-          opacity: 0.15,
-        },
-      },
     };
 
     // 在所有初始化完成后，添加进度面板
     this.initProgressPanel();
     console.log("Progress panel initialized");
-
-    // 添加参数存储
-    this.currentNebulaParams = null;
-    this.savedNebulaParams = null;
-
-    // 添加键盘事件监听
-    this.initializeKeyboardControls();
   }
 
-  // 添加键盘控制
-  initializeKeyboardControls() {
-    document.addEventListener("keydown", (e) => {
-      // 按 S 键保存当前参数
-      if (e.key === "s" || e.key === "S") {
-        this.saveCurrentParams();
-      }
-      // 按 L 键加载上次保存的参数
-      if (e.key === "l" || e.key === "L") {
-        this.loadSavedParams();
-      }
-      // 按 R 键重新随机生成
-      if (e.key === "r" || e.key === "R") {
-        this.regenerateWithRandomParams();
-      }
-    });
-  }
-
-  // 生成随机参数
-  generateRandomParams() {
-    return {
-      nebulae: this.nebulae.map((nebula) => ({
-        size: nebula.scale.x,
-        color: nebula.material.uniforms.color.value.getHex(),
-        opacity: nebula.material.uniforms.opacity.value,
-        position: {
-          x: nebula.position.x,
-          y: nebula.position.y,
-          z: nebula.position.z,
-        },
-        rotation: nebula.rotation.z,
-        // 保存着色器中的随机种子
-        seed: Math.random() * 10000,
-      })),
-      starfield: {
-        count: this.cosmicConfig.starfield.stars.count,
-        colors: this.starfield.geometry.attributes.color.array.slice(),
-        positions: this.starfield.geometry.attributes.position.array.slice(),
-        sizes: this.starfield.geometry.attributes.size.array.slice(),
-      },
-    };
-  }
-
-  // 保存当前参数
-  saveCurrentParams() {
-    const params = this.generateRandomParams();
-    this.savedNebulaParams = params; // 保存在内存中
-
-    // 格式化输出到控制台
-    console.log("✨ 当前场���参数：");
-    console.log(JSON.stringify(params, null, 2));
-  }
-
-  // 加载保存的参数
-  loadSavedParams() {
-    if (this.savedNebulaParams) {
-      this.applyParams(this.savedNebulaParams);
-      console.log("✨ 场景已恢复");
-    } else {
-      console.log("⚠️ 没有保存的场景");
-    }
-  }
-
-  // 应用参数
-  applyParams(params) {
-    // 应用星云参数
-    params.nebulae.forEach((nebulaParams, i) => {
-      if (this.nebulae[i]) {
-        const nebula = this.nebulae[i];
-        nebula.scale.setScalar(nebulaParams.size);
-        nebula.material.uniforms.color.value.setHex(nebulaParams.color);
-        nebula.material.uniforms.opacity.value = nebulaParams.opacity;
-        nebula.position.set(
-          nebulaParams.position.x,
-          nebulaParams.position.y,
-          nebulaParams.position.z
-        );
-        nebula.rotation.z = nebulaParams.rotation;
-
-        // 更新着色器中的随机种子
-        if (nebula.material.uniforms.seed) {
-          nebula.material.uniforms.seed.value = nebulaParams.seed;
-        }
-      }
-    });
-
-    // 应用星空参数
-    if (params.starfield && this.starfield) {
-      const geometry = this.starfield.geometry;
-      geometry.attributes.color.array.set(params.starfield.colors);
-      geometry.attributes.position.array.set(params.starfield.positions);
-      geometry.attributes.size.array.set(params.starfield.sizes);
-      geometry.attributes.color.needsUpdate = true;
-      geometry.attributes.position.needsUpdate = true;
-      geometry.attributes.size.needsUpdate = true;
-    }
-  }
-
-  // 重新生成随机效果
-  regenerateWithRandomParams() {
-    this.initializeCosmicEffects();
-    console.log("✨ 已重新生成");
-  }
-
-  // 添加进度面板初始化方法
+  // 添加进��面板初始化方法
   initProgressPanel() {
     if (document.querySelector(".progress-container")) return;
 
@@ -873,138 +643,6 @@ class SceneManager {
       });
     }, 500);
   }
-
-  // 新增魔法粒子创建方法
-  createMagicalParticles() {
-    const { config } = this.magicalParticles;
-    const geometry = new THREE.BufferGeometry();
-    const positions = [];
-    const colors = [];
-    const sizes = [];
-    const speeds = [];
-
-    // 创建粒子
-    for (let i = 0; i < config.count; i++) {
-      // 随机位置
-      positions.push(
-        THREE.MathUtils.randFloatSpread(2000), // x
-        THREE.MathUtils.randFloatSpread(2000), // y
-        THREE.MathUtils.randFloatSpread(1000) // z
-      );
-
-      // 随机颜色
-      const color =
-        config.colors[Math.floor(Math.random() * config.colors.length)];
-      colors.push(color.r, color.g, color.b);
-
-      // 随机大小
-      sizes.push(THREE.MathUtils.randFloat(config.size.min, config.size.max));
-
-      // 随机速度
-      speeds.push(
-        THREE.MathUtils.randFloat(config.speed.min, config.speed.max)
-      );
-    }
-
-    // 设置属性
-    geometry.setAttribute(
-      "position",
-      new THREE.Float32BufferAttribute(positions, 3)
-    );
-    geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
-    geometry.setAttribute("size", new THREE.Float32BufferAttribute(sizes, 1));
-    geometry.setAttribute("speed", new THREE.Float32BufferAttribute(speeds, 1));
-
-    // 创建着色器材质
-    const material = new THREE.ShaderMaterial({
-      uniforms: {
-        time: { value: 0 },
-        pixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
-      },
-      vertexShader: this.getMagicalParticleVertexShader(),
-      fragmentShader: this.getMagicalParticleFragmentShader(),
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    });
-
-    // 创建粒子系统
-    const particles = new THREE.Points(geometry, material);
-    this.magicalParticles.particles.push(particles);
-    this.scene.add(particles);
-  }
-
-  // 魔法粒子顶点着色器
-  getMagicalParticleVertexShader() {
-    return `
-      uniform float time;
-      uniform float pixelRatio;
-      attribute float size;
-      attribute float speed;
-      attribute vec3 color;
-      varying vec3 vColor;
-      
-      void main() {
-        vColor = color;
-        
-        // 添加魔法般的运动
-        vec3 pos = position;
-        float moveTime = time * speed;
-        
-        // 创建螺旋运动
-        float angle = moveTime * 0.5;
-        float radius = 50.0 * sin(moveTime * 0.2);
-        pos.x += cos(angle) * radius;
-        pos.y += sin(angle) * radius;
-        pos.z += sin(moveTime * 0.3) * 30.0;
-        
-        vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
-        gl_Position = projectionMatrix * mvPosition;
-        
-        // 添加大小变化
-        float scale = sin(moveTime) * 0.2 + 0.8;
-        gl_PointSize = size * pixelRatio * scale * (300.0 / -mvPosition.z);
-      }
-    `;
-  }
-
-  // 魔法粒子片段着色器
-  getMagicalParticleFragmentShader() {
-    return `
-      varying vec3 vColor;
-      
-      void main() {
-        // 创建柔和的光晕效果
-        vec2 center = gl_PointCoord - vec2(0.5);
-        float dist = length(center);
-        
-        // 基础光晕
-        float strength = 1.0 - smoothstep(0.0, 0.5, dist);
-        
-        // 添加内部光芒
-        float innerGlow = smoothstep(0.4, 0.0, dist);
-        
-        // 组合效果
-        vec3 finalColor = vColor * strength + vColor * innerGlow * 0.5;
-        float alpha = strength;
-        
-        gl_FragColor = vec4(finalColor, alpha);
-      }
-    `;
-  }
-
-  // 更新魔法粒子
-  updateMagicalParticles(deltaTime) {
-    // 添加安全检查
-    if (!this.magicalParticles || !this.magicalParticles.enabled) return;
-
-    this.magicalParticles.particles.forEach((particles) => {
-      if (particles.material && particles.material.uniforms) {
-        particles.material.uniforms.time.value += deltaTime;
-      }
-    });
-  }
-
   // 添加 animate 方法
   animate() {
     if (!this.animationState.isAnimating) return;
@@ -1024,19 +662,11 @@ class SceneManager {
       this.renderer.render(this.scene, this.camera);
     }
 
-    // 添加魔法粒子更新
-    this.updateMagicalParticles(deltaTime);
-
     requestAnimationFrame(this.animate.bind(this));
   }
 
   updateScene(deltaTime) {
     if (!this.scene || !this.config) return;
-
-    // 更新流星系统
-    if (this.meteorSystem) {
-      this.meteorSystem.update(deltaTime);
-    }
 
     // 更新星云
     if (this.nebulae) {
@@ -1103,23 +733,6 @@ class SceneManager {
     }
   }
 
-  updatePerformancePanel() {
-    const panel = document.getElementById("performance-panel");
-    if (!panel) return;
-
-    const { fps, frameTime } = this.stats;
-    const { drawCalls, triangles, points, lines } = this.debug.metrics;
-
-    panel.innerHTML = `
-      <div>FPS: ${fps.toFixed(1)}</div>
-      <div>Frame Time: ${frameTime.toFixed(1)}ms</div>
-      <div>Draw Calls: ${drawCalls}</div>
-      <div>Triangles: ${triangles}</div>
-      <div>Points: ${points}</div>
-      <div>Lines: ${lines}</div>
-    `;
-  }
-
   initializePerformanceMonitoring() {
     // 初始化性能监控状态
     this.stats = {
@@ -1127,23 +740,16 @@ class SceneManager {
       frameTime: 0,
       lastTime: performance.now(),
       frames: 0,
-      updateInterval: 1000,
-      lastUpdate: performance.now(),
     };
 
     // 初始化调试配置
     this.debug = {
       showPerformance: true,
-      logUpdates: true,
-      logInterval: 1000, // 日志输出间隔（毫秒）
       metrics: {
         drawCalls: 0,
         triangles: 0,
         points: 0,
         lines: 0,
-        textures: 0,
-        geometries: 0,
-        materials: 0,
       },
       thresholds: {
         fps: 30,
@@ -1164,25 +770,6 @@ class SceneManager {
   }
 
   initializeConfigs() {
-    this.config = {
-      scene: {
-        camera: {
-          fov: 60,
-          near: 0.1,
-          far: 3000,
-          position: { x: 0, y: 0, z: 1500 },
-          movement: {
-            rotationSpeed: 0.3,
-            positionSpeed: 0.4,
-            zoomSpeed: 0.5,
-            autoRotate: true,
-            autoRotateSpeed: 0.01,
-          },
-        },
-        background: new THREE.Color(0x000814),
-      },
-    };
-
     this.cosmicConfig = {
       starfield: {
         stars: {
@@ -1380,7 +967,7 @@ class SceneManager {
     this.camera.position.set(0, 0, 1500);
     this.camera.lookAt(0, 0, 0);
 
-    // 初始化相机动画状态
+    // 简化相机动画状态，只保留实际使用的参数
     this.cameraState = {
       // 漂浮运动参数
       drift: {
@@ -1396,7 +983,7 @@ class SceneManager {
       // 视角转动参数
       rotation: {
         enabled: true,
-        speed: 0.00015, // 非常缓慢的旋转
+        speed: 0.00015,
         time: 0,
       },
     };
@@ -1574,7 +1161,7 @@ class SceneManager {
         // 1. 深层暗云
         float darkCloud = fbm(rotatedUV * 1.5 - time * 0.02, 0.05);
         
-        // 2. 主要气态结构
+        // 2. ��要气态结构
         float mainStructure = fbm(rotatedUV * 2.0 + time * 0.05, 0.1);
         float pillar = smoothstep(0.3, -0.3, 
           abs(rotatedUV.x + sin(rotatedUV.y * 2.0) * 0.15) - 
@@ -1856,35 +1443,7 @@ class SceneManager {
     this.mouseState.target.y = -(event.clientY / window.innerHeight) * 2 + 1;
   }
 
-  // 添加调试方法
-  addDebugUI() {
-    if (!this.debug.enabled) return;
-
-    const debugContainer = document.createElement("div");
-    debugContainer.style.cssText = `
-      position: fixed;
-      top: 10px;
-      right: 10px;
-      background: rgba(0, 0, 0, 0.7);
-      color: white;
-      padding: 10px;
-      font-family: monospace;
-      font-size: 12px;
-      z-index: 1000;
-    `;
-
-    const updateDebug = () => {
-      debugContainer.textContent = `
-        Mouse: ${this.mouseState.position.x.toFixed(2)}, ${this.mouseState.position.y.toFixed(2)}
-        Camera: ${this.camera.position.x.toFixed(0)}, ${this.camera.position.y.toFixed(0)}, ${this.camera.position.z.toFixed(0)}
-        FPS: ${this.stats.fps.toFixed(1)}
-      `;
-    };
-
-    setInterval(updateDebug, 100);
-    document.body.appendChild(debugContainer);
-  }
-  // 修�����为3D流体效果计算
+  // 修改为3D流体效果计算
   calculateFlowEffect(x, y, time) {
     const { flow } = this.noise;
     let amplitude = 1;
@@ -1917,7 +1476,7 @@ class SceneManager {
     return noiseValue;
   }
 
-  // 更��星星着色器
+  // 更新星星着色器
   getStarVertexShader() {
     return `
       uniform float time;
@@ -2008,7 +1567,7 @@ class SceneManager {
       depthWrite: false,
     });
 
-    // 为每个星团创建��何体��网格
+    // 为每个星团创建几何体和网格
     for (let i = 0; i < clusters.count; i++) {
       const size = THREE.MathUtils.randFloat(
         clusters.size.min,
@@ -2118,7 +1677,7 @@ class SceneManager {
         // 创建柔和的光晕效果
         float alpha = smoothstep(0.5, 0.0, dist) * vOpacity;
         
-        // 添加微弱的闪烁效果
+        // 添加微弱的闪烁效���
         float twinkle = sin(time * 2.0 + gl_FragCoord.x * 0.1 + gl_FragCoord.y * 0.1) * 0.1 + 0.9;
         
         gl_FragColor = vec4(color * twinkle, alpha);
@@ -2142,7 +1701,7 @@ class SceneManager {
     });
   }
 
-  // 添加新的星云细节着色器
+  // 添加新的星云细��着色器
   getNebulaDustShader() {
     return `
       uniform vec3 color;
