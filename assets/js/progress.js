@@ -1061,7 +1061,7 @@ class SceneManager {
   }
 
   setupRenderer() {
-    // 创建渲染器
+    // 创建渲染器，只保留必要的配置
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
       alpha: true,
@@ -1082,17 +1082,17 @@ class SceneManager {
       this.container.appendChild(this.renderer.domElement);
     }
 
-    // 添加调试信息
-    console.log(
-      "Renderer canvas size:",
-      this.renderer.domElement.width,
-      this.renderer.domElement.height
-    );
-    console.log(
-      "Container size:",
-      this.container.clientWidth,
-      this.container.clientHeight
-    );
+    // 简化日志输出，只保留关键信息
+    console.log("Renderer initialized:", {
+      canvasSize: {
+        width: this.renderer.domElement.width,
+        height: this.renderer.domElement.height,
+      },
+      containerSize: {
+        width: this.container.clientWidth,
+        height: this.container.clientHeight,
+      },
+    });
   }
 
   getNebulaVertexShader() {
