@@ -1,4 +1,4 @@
-# README for Jenny's Website (Introduction Only blog system is in: https://github.com/NatureBlueee/blog) 🎁✨
+# README for Jenny's Website (Introduction Only blog system is in: [https://github.com/NatureBlueee/blog](https://github.com/NatureBlueee/blog/tree/This-one-is-correct!!!)) 🎁✨
 
 ## Welcome to Your Personal Universe! 🌌
 
